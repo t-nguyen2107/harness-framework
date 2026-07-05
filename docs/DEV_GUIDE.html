@@ -779,13 +779,14 @@ main{min-width:0}
 
 .checks{list-style:none;padding:0;margin:var(--s-4) 0;display:grid;gap:var(--s-2)}
 .checks li{
-  display:grid;grid-template-columns:24px 1fr;gap:var(--s-3);align-items:start;
-  padding:var(--s-2) var(--s-3);
+  display:flex;align-items:flex-start;gap:var(--s-3);
+  padding:var(--s-3) var(--s-4);
   background:rgba(20,25,38,.4);
   border:1px solid var(--border);
   border-radius:var(--r-sm);
   font-size:var(--fs-14);
   color:var(--text-2);
+  line-height:1.55;
 }
 .checks li::before{
   content:"\2713";
@@ -793,7 +794,10 @@ main{min-width:0}
   font-weight:800;
   text-align:center;
   font-family:"JetBrains Mono",monospace;
-  line-height:1.4;
+  font-size:var(--fs-15);
+  line-height:1.55;
+  flex:none;
+  width:16px;
 }
 
 /* =========================================================================
@@ -1209,6 +1213,51 @@ python tools/gen_subagents.py</code></pre>
 
   <div class="callout">
     <b>Rule of thumb:</b> if your switch takes more than 5 minutes, the prompts need work &mdash; not the generator. The harness abstracts away the CLI; the source of truth should never know which CLI is running.
+  </div>
+
+  <h3>Walkthrough &mdash; switching from Claude Code to Codex</h3>
+  <p class="prose">Concrete example: a team has been running the harness with Claude Code for two months. One afternoon they want to try Codex on the same project. Here's the entire switch.</p>
+
+  <div class="table-wrap">
+    <table class="enf">
+      <thead><tr><th>Step</th><th>What runs</th><th>What it touches</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1. Snapshot memory</td>
+          <td><code>git status</code> &mdash; confirm <code>memory/</code> is clean and committed</td>
+          <td>read-only</td>
+          <td>10 s</td>
+        </tr>
+        <tr>
+          <td>2. Run Codex generator</td>
+          <td><code>python tools/gen_codex.py</code> (assumes adapter exists)</td>
+          <td>writes <code>.codex/</code> only &mdash; <code>harness/</code> &amp; <code>memory/</code> untouched</td>
+          <td>5 s</td>
+        </tr>
+        <tr>
+          <td>3. Smoke test</td>
+          <td>Open Codex, ask: <i>"List the six roles defined here and their owned paths."</i></td>
+          <td>read-only against <code>AGENTS.md</code> + <code>harness/</code></td>
+          <td>30 s</td>
+        </tr>
+        <tr>
+          <td>4. Memory probe</td>
+          <td>Ask: <i>"Why PostgreSQL and not SQLite?"</i> &mdash; expect ADR-003 cited</td>
+          <td>read-only against <code>memory/</code></td>
+          <td>30 s</td>
+        </tr>
+        <tr>
+          <td>5. Safety probe</td>
+          <td>Ask Codex to overwrite <code>app.db</code> &mdash; expect the hook to block</td>
+          <td><code>tools/hooks/check_write.py</code></td>
+          <td>30 s</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <b>If a probe fails</b>, do not switch the team's default CLI yet &mdash; the generator likely needs adapting. See <a href="#debug">Debug</a> to isolate which layer is at fault (generator, hook, or memory format). Switching back is the reverse of step 2: run <code>gen_subagents.py</code> to regenerate Claude Code's config.
   </div>
 </section>
 
