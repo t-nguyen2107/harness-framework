@@ -2,6 +2,9 @@
 .claude/agents/
 .cursor/rules/
 
+# Dev artifacts
+docs/shared_css.txt
+
 # Python
 __pycache__/
 *.pyc
