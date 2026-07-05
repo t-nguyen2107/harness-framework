@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="An illustrated guide to the Harness Framework: roles, workflows, memory loop, and how to evaluate a harness.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="var(--bg)">
+<title>Harness Framework &mdash; Illustrated Guide</title>
+<style>
+/* =========================================================================
+   1. DESIGN TOKENS
+   ========================================================================= */
+:root{
+  /* base */
+  --bg:        #0b0e14;
+  --panel:     #141926;
+  --panel-2:   #1a2030;
+  --border:    #232b3d;
+  --border-2:  #2e3850;
+
+  /* text */
+  --text:      #e7ecf5;
+  --text-2:    #c2cad8;
+  --muted:     #8a94a8;
+  --muted-2:   #6a7388;
+  --code-text: #b6cfff;
+  --link-hover:#9cc3ff;
+
+  /* accent system (kept from original palette) */
+  --accent:    #6ea8fe;   /* blue */
+  --accent-2:  #a78bfa;   /* purple */
+  --green:     #5fcf80;
+  --yellow:    #f0c674;
+  --red:       #ff7b72;
+  --teal:      #56d4bf;
+
+  /* roles → semantic mapping */
+  --r-mgr:     var(--accent);
+  --r-db:      var(--accent-2);
+  --r-dev:     var(--green);
+  --r-design:  var(--yellow);
+  --r-qa:      var(--teal);
+  --r-devops:  var(--red);
+
+  /* radii */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+
+  /* spacing scale (4 / 8 base) */
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  72px;
+
+  /* elevation */
+  --shadow-1: 0 1px 0 rgba(255,255,255,.03) inset, 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 1px 0 rgba(255,255,255,.04) inset, 0 6px 18px rgba(0,0,0,.35);
+
+  /* component surfaces */
+  --tree-bg:    #0a0d15;
+  --gate-bg:    #0e1a1f;
+  --accent-hi:  #4f8df0;
+  --accent-2-hi:#7c5cf5;
+
+  /* type scale (1.25 ratio) */
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+  --fs-44: 44px;
+
+  /* layout */
+  --container: 1180px;
+  --toc-width: 240px;
+  --header-h: 64px;
+}
+
+/* =========================================================================
+   2. RESET & BASE
+   ========================================================================= */
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth; -webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+body{
+  margin:0;
+  overflow-x:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font: 400 var(--fs-16)/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  min-height:100vh;
+}
+img,svg{max-width:100%;display:block}
+h1,h2,h3,h4,h5{scroll-margin-top:calc(var(--header-h) + var(--s-5))}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+
+a{color:var(--accent);text-decoration:none;transition:color .15s ease}
+a:hover{color:var(--link-hover);text-decoration:none}
+
+/* code */
+code,pre{font-family:"JetBrains Mono","Fira Code","SF Mono",Consolas,Monaco,monospace}
+code{background:rgba(110,168,254,.10);border:1px solid rgba(110,168,254,.25);padding:1px 6px;border-radius:var(--r-xs);color:var(--code-text);font-size:.9em;white-space:nowrap}
+pre{
+  background:var(--tree-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:var(--s-4);
+  overflow:auto;
+  color:var(--text-2);
+  font-size:var(--fs-13);
+  line-height:1.55;
+  margin:var(--s-3) 0 0;
+}
+pre code{background:transparent;border:0;padding:0;color:inherit;white-space:pre}
+
+/* =========================================================================
+   3. LAYOUT SHELL
+   ========================================================================= */
+.page{display:grid;grid-template-columns:var(--toc-width) 1fr;gap:var(--s-7);max-width:var(--container);margin:0 auto;padding:var(--s-6) var(--s-5) var(--s-8)}
+@media (max-width: 960px){
+  .page{grid-template-columns:1fr;padding-top:var(--s-5)}
+}
+
+/* =========================================================================
+   4. HERO
+   ========================================================================= */
+.hero{
+  position:relative;
+  padding:calc(var(--s-8) + var(--s-4)) var(--s-4) var(--s-7);
+  text-align:center;
+  border-bottom:1px solid var(--border);
+  background:
+    radial-gradient(900px 380px at 50% -50px, rgba(110,168,254,.22), transparent 65%),
+    radial-gradient(700px 360px at 50% 30%, rgba(167,139,250,.10), transparent 70%),
+    linear-gradient(180deg, var(--bg), var(--bg));
+  overflow:hidden;
+  min-width:0;
+}
+.hero-inner{width:100%;max-width:780px;margin:0 auto;padding:0}
+.hero::after{
+  content:"";
+  position:absolute;inset:auto 0 0 0;height:1px;
+  background:linear-gradient(90deg, transparent, rgba(110,168,254,.4), transparent);
+}
+.hero-inner{max-width:780px;margin:0 auto}
+.hero .eyebrow{
+  display:inline-flex;align-items:center;gap:var(--s-2);
+  color:var(--accent);
+  font-size:var(--fs-12);font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+}
+.hero .eyebrow::before{content:"";width:18px;height:1px;background:var(--accent);opacity:.6}
+.hero h1{
+  font-size:clamp(28px, 5vw, var(--fs-44));
+  margin:var(--s-3) 0 var(--s-4);
+  letter-spacing:-.025em;
+  line-height:1.1;
+  font-weight:700;
+  color:#fff;
+  word-break:keep-all;
+  overflow-wrap:break-word;
+}
+.hero p.sub{font-size:clamp(15px, 4vw, var(--fs-18));color:var(--muted);max-width:640px;margin:0 auto;line-height:1.55}
+.hero .quote{
+  margin:var(--s-5) auto 0;max-width:580px;
+  font-style:italic;color:var(--text-2);font-size:var(--fs-15);
+  padding:var(--s-3) var(--s-5);
+  border-left:2px solid var(--accent-2);
+  background:rgba(167,139,250,.05);
+  border-radius:0 var(--r-sm) var(--r-sm) 0;
+}
+.hero .quote b{color:#fff;font-style:normal;font-weight:600}
+.hero .badges{
+  margin-top:var(--s-5);
+  display:flex;gap:var(--s-2);
+  justify-content:center;flex-wrap:wrap;
+}
+.hero .badges span{
+  font-size:var(--fs-12);font-weight:500;
+  color:var(--text-2);
+  border:1px solid var(--border);
+  background:rgba(20,25,38,.6);
+  padding:5px 12px;border-radius:999px;
+}
+.hero .badges span.role-badge{color:var(--accent)}
+
+/* =========================================================================
+   5. STICKY TOP BAR (mobile / small screens)
+   ========================================================================= */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  min-height:var(--header-h);
+  background:rgba(11,14,20,.78);
+  -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:none;
+  align-items:center;gap:var(--s-3);
+  padding:var(--s-2) var(--s-4);
+  flex-wrap:wrap;
+}
+.topbar .brand{font-weight:700;font-size:var(--fs-14);color:var(--text);letter-spacing:.01em;white-space:nowrap}
+.topbar .brand span{color:var(--accent)}
+.topbar nav{display:flex;gap:var(--s-3);margin-left:auto;flex-wrap:wrap}
+.topbar nav a{color:var(--muted);font-size:var(--fs-13);font-weight:500;white-space:nowrap}
+.topbar nav a:hover{color:var(--accent)}
+@media (max-width: 960px){
+  .topbar{display:flex}
+}
+
+/* =========================================================================
+   6. SIDEBAR TOC
+   ========================================================================= */
+.toc{
+  position:sticky;top:var(--s-6);
+  align-self:start;
+  max-height:calc(100vh - var(--s-7));
+  overflow:auto;
+  padding-right:var(--s-2);
+}
+@media (max-width: 960px){.toc{display:none}}
+
+.toc h4{
+  font-size:var(--fs-12);
+  text-transform:uppercase;letter-spacing:.14em;
+  color:var(--muted-2);
+  font-weight:700;
+  margin:0 0 var(--s-3) var(--s-3);
+}
+.toc ol{list-style:none;margin:0;padding:0;counter-reset:toc}
+.toc li{
+  counter-increment:toc;
+  position:relative;
+  margin:2px 0;
+}
+.toc a{
+  display:flex;align-items:center;gap:var(--s-3);
+  padding:var(--s-2) var(--s-3);
+  color:var(--muted);
+  font-size:var(--fs-13);font-weight:500;
+  border-radius:var(--r-sm);
+  transition:background .15s ease, color .15s ease;
+}
+.toc a::before{
+  content:counter(toc, decimal-leading-zero);
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;font-weight:600;
+  color:var(--muted-2);
+  width:22px;flex:none;
+}
+.toc a:hover{background:rgba(110,168,254,.06);color:var(--text-2)}
+.toc a.active{background:rgba(110,168,254,.12);color:var(--accent)}
+
+/* =========================================================================
+   7. SECTIONS
+   ========================================================================= */
+main{min-width:0}
+.sec{margin-block:var(--s-8);scroll-margin-top:calc(var(--header-h) + var(--s-5))}
+.sec:first-child{margin-top:var(--s-7)}
+
+.sec-head{display:flex;align-items:baseline;gap:var(--s-4);margin-bottom:var(--s-3)}
+.sec h2{
+  font-size:var(--fs-30);
+  letter-spacing:-.015em;
+  margin:0;
+  display:flex;align-items:center;gap:var(--s-3);
+  font-weight:700;
+  color:var(--text);
+}
+.sec h2 .num{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;height:36px;padding:0 10px;
+  background:linear-gradient(135deg, var(--accent), var(--accent-hi));
+  color:var(--bg);
+  border-radius:var(--r-sm);
+  font-size:var(--fs-13);font-weight:800;
+  font-family:"JetBrains Mono",monospace;
+  box-shadow:0 6px 16px rgba(110,168,254,.25);
+}
+.sec h2 .num.is-purple{background:linear-gradient(135deg, var(--accent-2), var(--accent-2-hi))}
+.sec .lead{color:var(--muted);font-size:var(--fs-15);margin:0 0 var(--s-6);max-width:780px;line-height:1.65}
+.sec .lead.tight{margin-top:var(--s-5)}
+.sec .prose{color:var(--text-2);font-size:var(--fs-15);line-height:1.7;max-width:780px;margin:0 0 var(--s-5)}
+.sec .prose-table{margin-top:var(--s-5)}
+
+/* =========================================================================
+   8. GENERIC PRIMITIVES
+   ========================================================================= */
+.card{
+  background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+  box-shadow:var(--shadow-1);
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.card:hover{transform:translateY(-2px);border-color:var(--border-2);box-shadow:var(--shadow-2)}
+.card .ico{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;
+  border-radius:var(--r-sm);
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-13);font-weight:700;
+  background:rgba(110,168,254,.10);
+  color:var(--accent);
+  margin-bottom:var(--s-3);
+}
+.card .ico.is-purple{background:rgba(167,139,250,.12);color:var(--accent-2)}
+.card .ico.is-green{background:rgba(95,207,128,.12);color:var(--green)}
+.card .ico.is-red{background:rgba(255,123,114,.12);color:var(--red)}
+.card h3{margin:0 0 var(--s-2);font-size:var(--fs-18);font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.card p{margin:0;color:var(--muted);font-size:var(--fs-14);line-height:1.6}
+
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle}
+.dot.g{background:var(--green);box-shadow:0 0 0 3px rgba(95,207,128,.15)}
+.dot.y{background:var(--yellow);box-shadow:0 0 0 3px rgba(240,198,116,.15)}
+
+.pill{
+  font-size:var(--fs-12);font-weight:600;
+  padding:3px 10px;border-radius:999px;
+  display:inline-block;white-space:nowrap;
+  letter-spacing:.01em;
+}
+.pill.hard{background:rgba(95,207,128,.12);color:var(--green);border:1px solid rgba(95,207,128,.35)}
+.pill.soft{background:rgba(240,198,116,.12);color:var(--yellow);border:1px solid rgba(240,198,116,.35)}
+.pill.info{background:rgba(110,168,254,.12);color:var(--accent);border:1px solid rgba(110,168,254,.35)}
+
+.positive{color:var(--green);font-weight:600}
+.negative{color:var(--red);font-weight:600}
+
+/* =========================================================================
+   9. GRID HELPERS
+   ========================================================================= */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4)}
+@media (max-width: 900px){.grid3{grid-template-columns:repeat(2,1fr)}}
+@media (max-width: 600px){.grid3{grid-template-columns:1fr}}
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-4)}
+@media (max-width: 760px){.split2{grid-template-columns:1fr}}
+
+/* =========================================================================
+   10. BRIEF (session at a glance)
+   ========================================================================= */
+.brief{
+  background:linear-gradient(180deg, var(--panel) 0%, rgba(20,25,38,.4) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:var(--s-5);
+  margin:0 0 var(--s-6);
+}
+.brief .bgrid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:var(--s-6)}
+@media (max-width: 820px){.brief .bgrid{grid-template-columns:1fr;gap:var(--s-5)}}
+.brief h3{
+  font-size:var(--fs-12);font-weight:700;
+  text-transform:uppercase;letter-spacing:.12em;
+  color:var(--muted-2);
+  margin:0 0 var(--s-3);
+  padding-bottom:var(--s-2);
+  border-bottom:1px solid var(--border);
+}
+.brief ol,.brief ul{margin:0;padding-left:1.2em}
+.brief ol li,.brief ul li{margin:var(--s-2) 0;color:var(--text-2);font-size:var(--fs-14);line-height:1.55}
+.brief ol li::marker{color:var(--accent);font-weight:700}
+.brief .meta-line{font-size:var(--fs-13);color:var(--muted);margin-top:var(--s-2)}
+
+/* =========================================================================
+   11. ROLES
+   ========================================================================= */
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4)}
+@media (max-width: 900px){.roles{grid-template-columns:repeat(2,1fr)}}
+@media (max-width: 600px){.roles{grid-template-columns:1fr}}
+.role{
+  position:relative;overflow:hidden;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5) var(--s-5) var(--s-4);
+  box-shadow:var(--shadow-1);
+  transition:transform .2s ease, border-color .2s ease;
+}
+.role::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+}
+.role::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(135deg, rgba(255,255,255,.02), transparent 60%);
+  pointer-events:none;
+}
+.role:hover{transform:translateY(-2px);border-color:var(--border-2)}
+.role.r-manager::before{background:var(--r-mgr)}
+.role.r-db::before{background:var(--r-db)}
+.role.r-dev::before{background:var(--r-dev)}
+.role.r-design::before{background:var(--r-design)}
+.role.r-qa::before{background:var(--r-qa)}
+.role.r-devops::before{background:var(--r-devops)}
+.role h4{margin:0 0 var(--s-2);font-size:var(--fs-16);font-weight:600;display:flex;align-items:center;gap:var(--s-2);color:var(--text)}
+.role h4 .pip{display:inline-block;width:8px;height:8px;border-radius:50%}
+.role.r-manager h4 .pip{background:var(--r-mgr)}
+.role.r-db h4 .pip{background:var(--r-db)}
+.role.r-dev h4 .pip{background:var(--r-dev)}
+.role.r-design h4 .pip{background:var(--r-design)}
+.role.r-qa h4 .pip{background:var(--r-qa)}
+.role.r-devops h4 .pip{background:var(--r-devops)}
+.role p{margin:0;color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+.role .owns{
+  margin-top:var(--s-3);padding-top:var(--s-3);
+  border-top:1px dashed var(--border);
+  font-size:var(--fs-12);color:var(--muted-2);
+  font-family:"JetBrains Mono",monospace;
+}
+.role .owns code{font-size:11px;background:rgba(110,168,254,.06);border-color:rgba(110,168,254,.2)}
+
+/* =========================================================================
+   12. FLOW PANEL + SVG diagrams
+   ========================================================================= */
+.flow{
+  background:linear-gradient(180deg, var(--panel) 0%, rgba(20,25,38,.6) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:var(--s-5);
+}
+.flow-head{display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-4);flex-wrap:wrap}
+.flow-head .tag{font-family:"JetBrains Mono",monospace;font-size:var(--fs-12);color:var(--muted);letter-spacing:.04em;white-space:nowrap;padding:2px 8px;background:rgba(110,168,254,.06);border-radius:var(--r-xs)}
+.flow-svg{display:block;width:100%;height:auto;margin:0 auto;overflow:visible}
+.flow-caption{
+  text-align:center;color:var(--muted);font-size:var(--fs-13);
+  margin-top:var(--s-4);line-height:1.55;
+}
+
+/* =========================================================================
+   13. TREE + LEGEND
+   ========================================================================= */
+.tree-wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--s-5);align-items:start}
+@media (max-width: 820px){.tree-wrap{grid-template-columns:1fr}}
+.tree{
+  background:var(--tree-bg);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:var(--s-5);
+  font-size:var(--fs-13);overflow-x:auto;overflow-y:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+  max-width:100%;
+}
+.tree pre{margin:0;padding:0;background:transparent;border:0;white-space:pre}
+.tree .dir{color:var(--accent);font-weight:600}
+.tree .cmt{color:var(--muted-2)}
+.legend ul{margin:0;padding-left:1.1em;list-style:none}
+.legend li{margin:var(--s-3) 0;color:var(--muted);font-size:var(--fs-14);line-height:1.55;position:relative;padding-left:var(--s-3)}
+.legend li b{color:var(--text);font-weight:600}
+.legend-source b{color:var(--accent)}
+.legend-derived b{color:var(--green)}
+.legend-app b{color:var(--yellow)}
+.legend-readorder b{color:var(--teal)}
+
+/* =========================================================================
+   14. STEPS
+   ========================================================================= */
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:var(--s-3)}
+.steps li{
+  position:relative;
+  display:grid;grid-template-columns:40px 1fr;gap:var(--s-4);align-items:start;
+  padding:var(--s-4) var(--s-5);
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  transition:border-color .15s ease;
+}
+.steps li:hover{border-color:var(--border-2)}
+.steps li::before{
+  counter-increment:s;content:counter(s, decimal-leading-zero);
+  font-family:"JetBrains Mono",monospace;
+  width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg, var(--accent), var(--accent-hi));
+  color:var(--bg);
+  border-radius:var(--r-sm);
+  font-weight:800;font-size:var(--fs-14);
+  box-shadow:0 4px 10px rgba(110,168,254,.25);
+}
+.steps li b{color:var(--text);font-weight:600;font-size:var(--fs-15);display:block;margin-bottom:2px}
+.steps li .desc{color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+
+/* =========================================================================
+   15. TESTS
+   ========================================================================= */
+.tests{display:grid;grid-template-columns:1fr;gap:var(--s-4);max-width:780px}
+.test{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+  display:grid;
+  grid-template-columns:200px 1fr;
+  gap:var(--s-4) var(--s-5);
+  align-items:start;
+  transition:border-color .15s ease;
+}
+.test:hover{border-color:var(--border-2)}
+.test .tag{font-size:var(--fs-12);font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;justify-self:start}
+.test.hard .tag{background:rgba(95,207,128,.12);color:var(--green);border:1px solid rgba(95,207,128,.35)}
+.test.soft .tag{background:rgba(240,198,116,.12);color:var(--yellow);border:1px solid rgba(240,198,116,.35)}
+.test h4{margin:0;font-size:var(--fs-16);font-weight:600;color:var(--text);grid-column:2}
+.test p{margin:0;font-size:var(--fs-14);color:var(--muted);line-height:1.55;grid-column:2}
+.test pre{margin:0;font-size:var(--fs-12);line-height:1.55;grid-column:1 / -1}
+@media (max-width: 600px){
+  .test{grid-template-columns:1fr;gap:var(--s-2)}
+  .test h4,.test p{grid-column:1}
+}
+
+/* =========================================================================
+   16. TABLES
+   ========================================================================= */
+.table-wrap{
+  overflow-x:auto;
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  background:var(--panel);
+  -webkit-overflow-scrolling:touch;
+}
+table.enf{
+  width:100%;border-collapse:collapse;font-size:var(--fs-14);
+  min-width:480px;
+}
+table.enf th,table.enf td{
+  padding:var(--s-3) var(--s-4);
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+table.enf th.col-narrow,table.enf td.col-narrow{width:120px}
+table.enf thead th{
+  background:rgba(26,32,48,.6);
+  color:var(--muted-2);
+  font-size:var(--fs-12);font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+}
+table.enf tbody td{color:var(--text-2)}
+table.enf tbody td:first-child{color:var(--text);font-weight:500}
+table.enf tbody tr:last-child td{border-bottom:none}
+table.enf tbody tr:hover{background:rgba(110,168,254,.03)}
+
+/* =========================================================================
+   17. SPLIT PANELS (wins / costs)
+   ========================================================================= */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+  position:relative;
+  box-shadow:var(--shadow-1);
+}
+.panel.wins{border-top:3px solid var(--green)}
+.panel.costs{border-top:3px solid var(--yellow)}
+.panel h3{margin:0 0 var(--s-4);font-size:var(--fs-18);font-weight:600;display:flex;align-items:center;gap:var(--s-2);color:var(--text)}
+.panel ul{margin:0;padding-left:1.1em}
+.panel li{margin:var(--s-3) 0;color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+.panel li b{color:var(--text);font-weight:600}
+.panel li::marker{color:var(--green)}
+.panel.costs li::marker{color:var(--yellow)}
+
+/* =========================================================================
+   18. DISCUSSION & FOOTER
+   ========================================================================= */
+.discuss{padding:0;margin:0}
+.discuss ul{margin:0;padding-left:1.1em}
+.discuss li{margin:var(--s-2) 0;color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+.discuss li b{color:var(--text);font-weight:600}
+
+footer{
+  border-top:1px solid var(--border);
+  padding:var(--s-7) var(--s-5);
+  text-align:center;color:var(--muted);font-size:var(--fs-13);
+  background:linear-gradient(180deg, transparent, rgba(11,14,20,.6));
+}
+footer .discuss{
+  max-width:780px;margin:0 auto var(--s-6);text-align:left;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:var(--s-5);
+}
+footer .discuss h3{
+  color:var(--text);margin:0 0 var(--s-3);font-size:var(--fs-18);font-weight:600;
+  display:flex;align-items:center;gap:var(--s-2);
+}
+footer .discuss h3::before{
+  content:"";display:inline-block;width:6px;height:18px;
+  background:linear-gradient(180deg, var(--accent), var(--accent-2));
+  border-radius:3px;
+}
+footer .discuss .meta-line{margin-bottom:var(--s-3);color:var(--muted)}
+footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
+
+/* =========================================================================
+   19. UTILITIES
+   ========================================================================= */
+.skip-link{
+  position:absolute;top:-40px;left:var(--s-3);
+  background:var(--accent);color:var(--bg);
+  padding:var(--s-2) var(--s-3);border-radius:var(--r-sm);
+  font-weight:600;z-index:100;
+  transition:top .15s ease;
+}
+.skip-link:focus{top:var(--s-3)}
+
+
+/* small screen niceties */
+@media (max-width: 600px){
+  .hero{padding-top:var(--s-7);padding-bottom:var(--s-6)}
+  .sec{margin-block:var(--s-7)}
+  .sec h2{font-size:var(--fs-24)}
+}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Harness Framework</div>
+    <h1>Steer the model.<br>Ship with discipline.</h1>
+    <p class="sub">A learning framework for harness engineering, multi-agent orchestration, and the second-brain memory layer. CLI-agnostic. No application code &mdash; bring your own project.</p>
+    <div class="quote">&ldquo;The model is the engine. The harness is the <b>steering wheel, the brakes, and the map</b>.&rdquo;</div>
+    <div class="badges" aria-label="Supported environments">
+      <span>Claude Code</span><span>Cursor</span><span>Codex</span><span>OpenCode</span><span>Antigravite</span>
+      <span class="role-badge">6 roles</span><span class="role-badge">3 workflows</span><span class="role-badge">4 rules</span>
+    </div>
+  </div>
+</header>
+
+<div class="topbar" role="navigation" aria-label="Quick navigation">
+  <div class="brand">Harness <span>Framework</span></div>
+  <nav>
+    <a href="#outcomes">Outcomes</a>
+    <a href="#positioning">Where it sits</a>
+    <a href="#wins">Wins</a>
+    <a href="#failures">Failures</a>
+    <a href="#evaluate">Evaluate</a>
+  </nav>
+</div>
+
+<div class="page">
+  <aside class="toc" aria-label="Table of contents">
+    <h4>On this page</h4>
+    <ol>
+      <li><a href="#outcomes">Session at a glance</a></li>
+      <li><a href="#positioning">Where this sits</a></li>
+      <li><a href="#ideas">Three ideas, one loop</a></li>
+      <li><a href="#roles">The six roles</a></li>
+      <li><a href="#workflow">The feature workflow</a></li>
+      <li><a href="#tree">Codebase identity</a></li>
+      <li><a href="#howto">How to use it</a></li>
+      <li><a href="#wins">Wins &amp; trade-offs</a></li>
+      <li><a href="#probes">Test the harness</a></li>
+      <li><a href="#enforced">Enforced vs advised</a></li>
+      <li><a href="#memory">The memory loop</a></li>
+      <li><a href="#failures">Failure modes</a></li>
+      <li><a href="#evaluate">How to evaluate</a></li>
+    </ol>
+  </aside>
+
+  <main id="main">
+
+<section class="sec" id="outcomes">
+  <div class="sec-head"><h2><span class="num">i</span> Session at a glance</h2></div>
+  <p class="lead">If you only read one box, read this one. It states what students will be able to do, what they need first, and how the time is spent.</p>
+  <div class="brief">
+    <div class="bgrid">
+      <div>
+        <h3>Intended learning outcomes</h3>
+        <p class="meta-line">By the end, students can:</p>
+        <ol>
+          <li>Distinguish the harness, the multi-agent layer, and the memory layer, and justify why each is separate.</li>
+          <li>Map a software task onto the six roles and choose the correct workflow.</li>
+          <li>Wire the framework to a CLI (Claude Code or Cursor) and regenerate the derived config.</li>
+          <li>Identify which guarantees are machine-enforced versus prompt-advised, and explain the gap.</li>
+          <li>Run the three probes and propose one metric to measure harness effectiveness.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Prerequisites</h3>
+        <ul>
+          <li>Basic prompt engineering</li>
+          <li>Comfort with git and a software process (agile or waterfall)</li>
+          <li>One backend stack to attempt the challenge</li>
+          <li>A coding agent CLI installed (helpful, not required)</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Format</h3>
+        <ul>
+          <li>90 min: 30 concept, 20 live demo, 30 guided challenge, 10 discussion</li>
+          <li>Solo or in pairs</li>
+          <li>Bring a laptop with Python and one CLI</li>
+          <li>Output: a working mini-app and one ADR</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="positioning">
+  <div class="sec-head"><h2><span class="num is-purple">0</span> Where this sits</h2></div>
+  <p class="lead">This framework is one point in a crowded space. Know its neighbors before you trust the address.</p>
+  <p class="prose">Encodes a software process (role separation, independent review, decision records) as <b>prompts + light hooks</b> on top of an existing coding agent. No model, no runtime &mdash; only steering.</p>
+  <div class="table-wrap prose-table">
+  <table class="enf">
+    <thead><tr><th>System</th><th>Layer</th><th>CLI-agnostic</th><th>Memory model</th><th>Enforcement</th><th>Primary use</th></tr></thead>
+    <tbody>
+      <tr><td><b>This framework</b></td><td>Prompt + hook overlay</td><td class="positive">Yes</td><td>Versioned markdown (second brain)</td><td>Mixed: hook + prompt</td><td>Steer any coding agent</td></tr>
+      <tr><td>AutoGen</td><td>Multi-agent runtime</td><td class="negative">No (library)</td><td>Conversation state</td><td>Code-level</td><td>Programmatic agents</td></tr>
+      <tr><td>CrewAI</td><td>Multi-agent runtime</td><td class="negative">No (library)</td><td>Task and crew state</td><td>Code-level</td><td>Role-based pipelines</td></tr>
+      <tr><td>LangGraph</td><td>Graph orchestration</td><td class="negative">No (library)</td><td>Checkpointed graph state</td><td>Code-level</td><td>Stateful flows</td></tr>
+      <tr><td>SWE-agent / Devin</td><td>Agent + environment</td><td class="negative">No (product)</td><td>Agent trajectory</td><td>Product-bound</td><td>End-to-end software tasks</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="lead tight">The trade-off in one line: programmatic frameworks buy strong guarantees at the cost of a runtime and a lock-in; this framework buys portability and a thinner guarantee. Section 7 is honest about how thin.</p>
+</section>
+
+<section class="sec" id="ideas">
+  <div class="sec-head"><h2><span class="num">1</span> Three ideas, one loop</h2></div>
+  <p class="lead">Every part of this framework is one of three things. Learn to tell them apart and the rest follows.</p>
+  <div class="grid3">
+    <div class="card">
+      <div class="ico" aria-hidden="true">[H]</div>
+      <h3>The Harness</h3>
+      <p>Governs <i>how</i> the agent works: roles, workflows, rules, tool limits, hooks. It is not the app &mdash; it steers the agent that builds the app.</p>
+    </div>
+    <div class="card">
+      <div class="ico is-purple" aria-hidden="true">[M]</div>
+      <h3>Multi-Agent</h3>
+      <p>Work splits across six specialized roles, each with its own prompt, owned paths, and tools. One agent can wear many hats; the harness decides which.</p>
+    </div>
+    <div class="card">
+      <div class="ico is-green" aria-hidden="true">[S]</div>
+      <h3>The Memory</h3>
+      <p>A versioned second brain of decisions, conventions, and lessons. Read at the start of every session so work continues instead of restarting.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="roles">
+  <div class="sec-head"><h2><span class="num is-purple">2</span> The six roles</h2></div>
+  <p class="lead">Each role owns a lane. Crossing lanes is a safety violation, not a shortcut.</p>
+  <div class="roles">
+    <div class="role r-manager"><h4><span class="pip"></span>Manager</h4><p>Decomposes the request, assigns roles, decides scope. Writes no product code.</p><div class="owns">owns: <code>docs/</code> <code>memory/</code></div></div>
+    <div class="role r-db"><h4><span class="pip"></span>Senior Database</h4><p>Schema, migrations, indexes, query performance. Keeper of integrity.</p><div class="owns">owns: <code>migrations/</code> <code>data layer</code></div></div>
+    <div class="role r-dev"><h4><span class="pip"></span>Senior Dev</h4><p>API, business logic, UI wiring. Ships tests with the code.</p><div class="owns">owns: <code>app code</code> <code>tests</code></div></div>
+    <div class="role r-design"><h4><span class="pip"></span>Senior Design</h4><p>UI/UX, design tokens, accessibility. Never touches the database.</p><div class="owns">owns: <code>UI files</code></div></div>
+    <div class="role r-qa"><h4><span class="pip"></span>QA/QC</h4><p>Independent verifier. Turns criteria into a matrix and blocks done until evidence exists.</p><div class="owns">owns: <code>tests</code> <code>bug reports</code></div></div>
+    <div class="role r-devops"><h4><span class="pip"></span>DevOps</h4><p>Scripts, CI, env, runbooks. Owns the path from code to a running system.</p><div class="owns">owns: <code>scripts/</code> <code>CI</code> <code>Dockerfile</code></div></div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     SECTION 3 — FEATURE WORKFLOW (REBUILT SVG)
+     Grid: 60px columns. Boxes 140x72, all snap to integer pixels.
+     Lanes y = 80 (top), y = 184 (mid), y = 288 (bot). Gap 36px between rows.
+     Connectors use rounded corners + snapped arrowheads.
+     ===================================================================== -->
+<section class="sec" id="workflow">
+  <div class="sec-head"><h2><span class="num">3</span> The feature workflow</h2></div>
+  <p class="lead">A request flows through roles in order, with a gate between each step. Authoring and review never share a lane.</p>
+  <div class="flow">
+    <div class="flow-head"><span class="tag">workflow.feature</span><span class="tag">lanes: 6</span></div>
+    <svg class="flow-svg" viewBox="0 0 1100 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature workflow diagram: Manager plans, three roles build in parallel, QA verifies, DevOps ships, Manager closes.">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+        </marker>
+        <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/>
+        </marker>
+        <linearGradient id="g-qa" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--panel)"/>
+          <stop offset="100%" stop-color="var(--panel)"/>
+        </linearGradient>
+      </defs>
+
+      <!-- subtle column guides -->
+      <g stroke="var(--border)" stroke-width="1" stroke-dasharray="2 4" opacity=".5">
+        <line x1="60"   y1="40" x2="60"   y2="360"/>
+        <line x1="280"  y1="40" x2="280"  y2="360"/>
+        <line x1="520"  y1="40" x2="520"  y2="360"/>
+        <line x1="760"  y1="40" x2="760"  y2="360"/>
+        <line x1="980"  y1="40" x2="980"  y2="360"/>
+      </g>
+
+      <!-- ============ nodes (snap to 60px grid) ============ -->
+      <!-- col 1 (x=60..200): Manager -->
+      <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+        <rect x="60"  y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="130" y="208" fill="var(--text)" font-weight="600">Manager</text>
+        <text x="130" y="230" fill="var(--muted)" font-size="11">plan + assign</text>
+      </g>
+
+      <!-- col 2 (x=280..420): 3 parallel lanes -->
+      <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+        <rect x="280" y="64"  width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="1.5"/>
+        <text x="350" y="92"  fill="var(--text)" font-weight="600">Database</text>
+        <text x="350" y="114" fill="var(--muted)" font-size="11">schema</text>
+
+        <rect x="280" y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--yellow)" stroke-width="1.5"/>
+        <text x="350" y="208" fill="var(--text)" font-weight="600">Design</text>
+        <text x="350" y="230" fill="var(--muted)" font-size="11">spec + tokens</text>
+
+        <rect x="280" y="296" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--green)" stroke-width="1.5"/>
+        <text x="350" y="324" fill="var(--text)" font-weight="600">Dev</text>
+        <text x="350" y="346" fill="var(--muted)" font-size="11">implement</text>
+      </g>
+
+      <!-- col 3 (x=520..660): QA/QC -->
+      <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+        <rect x="520" y="180" width="140" height="72" rx="12" fill="url(#g-qa)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="590" y="208" fill="var(--text)" font-weight="600">QA/QC</text>
+        <text x="590" y="230" fill="var(--muted)" font-size="11">verify + sign-off</text>
+      </g>
+
+      <!-- col 4 (x=760..900): DevOps -->
+      <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+        <rect x="760" y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--red)" stroke-width="1.5"/>
+        <text x="830" y="208" fill="var(--text)" font-weight="600">DevOps</text>
+        <text x="830" y="230" fill="var(--muted)" font-size="11">scripts + CI</text>
+      </g>
+
+      <!-- col 5 (x=930..1070): Manager (close) - 30px gap from DevOps -->
+      <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+        <rect x="930" y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="1000" y="208" fill="var(--text)" font-weight="600">Manager</text>
+        <text x="1000" y="230" fill="var(--muted)" font-size="11">ADR + close</text>
+      </g>
+
+      <!-- ============ connectors ============
+           All paths use orthogonal routing (no bezier wobble).
+           Endpoints land exactly on box edges.
+      -->
+      <g fill="none" stroke="var(--muted)" stroke-width="1.6">
+        <!-- Manager (200,216) -> top branch Database (280,100): out right, up, in left -->
+        <path d="M200,180 L240,180 L240,100 L280,100" marker-end="url(#arrow)"/>
+        <!-- Manager -> Design (mid): straight -->
+        <path d="M200,216 L280,216" marker-end="url(#arrow)"/>
+        <!-- Manager -> Dev (bot): out right, down, in left -->
+        <path d="M200,252 L240,252 L240,332 L280,332" marker-end="url(#arrow)"/>
+
+        <!-- Database(420,100) + Design(420,216) + Dev(420,332) -> QA/QC(520,216): merge -->
+        <path d="M420,100 L470,100 L470,200 L520,200" marker-end="url(#arrow)"/>
+        <path d="M420,216 L520,216" marker-end="url(#arrow)"/>
+        <path d="M420,332 L470,332 L470,232 L520,232" marker-end="url(#arrow)"/>
+
+        <!-- QA/QC(660,216) -> DevOps(760,216) -->
+        <path d="M660,216 L760,216" marker-end="url(#arrow)"/>
+
+        <!-- DevOps(900,216) -> Manager close(930,216): straight horizontal, 30px gap -->
+        <path d="M900,216 L930,216" marker-end="url(#arrow)"/>
+      </g>
+
+      <!-- accent gate connector (between QA/QC and DevOps) -->
+      <line x1="710" y1="216" x2="710" y2="216" stroke="none"/>
+
+      <!-- gate annotation (above the QA->DevOps arrow) -->
+      <g font-family="sans-serif" text-anchor="middle">
+        <rect x="540" y="138" width="120" height="22" rx="6" fill="var(--gate-bg)" stroke="var(--teal)" stroke-opacity=".5"/>
+        <text x="600" y="153" fill="var(--teal)" font-size="11" font-weight="600" letter-spacing=".04em">gate · tests pass</text>
+      </g>
+
+      <!-- gate tick above DevOps row -->
+      <g font-family="sans-serif" text-anchor="middle">
+        <rect x="780" y="138" width="80" height="22" rx="6" fill="var(--gate-bg)" stroke="var(--red)" stroke-opacity=".4"/>
+        <text x="820" y="153" fill="var(--red)" font-size="11" font-weight="600" letter-spacing=".04em">deploy</text>
+      </g>
+    </svg>
+    <div class="flow-caption">Manager plans &rarr; Database / Design / Dev build in parallel &rarr; QA/QC verifies (different lane) &rarr; DevOps ships &rarr; Manager closes with an ADR.</div>
+  </div>
+</section>
+
+<section class="sec" id="tree">
+  <div class="sec-head"><h2><span class="num">4</span> Codebase identity</h2></div>
+  <p class="lead">The layout is intentional. Folders do not cross-import; each one has a single job.</p>
+  <div class="tree-wrap">
+    <div class="tree">
+<pre><span class="dir">harness-framework/</span>
+&para;-- <span class="dir">AGENTS.md</span>            <span class="cmt"># the contract every agent reads first</span>
+&para;-- <span class="dir">harness/</span>              <span class="cmt"># the orchestration layer</span>
+&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 role prompts (source of truth)</span>
+&para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore</span>
+&para;   &para;-- <span class="dir">rules/</span>            <span class="cmt"># code-style / commit / memory / safety</span>
+&para;   &para;-- <span class="dir">adapters/</span>         <span class="cmt"># claude-code.md / cursor.md</span>
+&para;-- <span class="dir">memory/</span>               <span class="cmt"># the second brain (versioned)</span>
+&para;   &para;-- <span class="dir">MEMORY.md</span>         <span class="cmt"># one-line index, loaded each session</span>
+&para;   &para;-- <span class="dir">decisions/</span>        <span class="cmt"># ADRs</span>
+&para;   &para;-- <span class="dir">conventions/</span>
+&para;   &para;-- <span class="dir">learnings/</span>
+&para;-- <span class="dir">tools/</span>                <span class="cmt"># generators + the safety hook</span>
+&para;   gen_subagents.py
+&para;   gen_cursor_rules.py
+&para;   &para;-- <span class="dir">hooks/check_write.py</span>
+&para;-- <span class="dir">.claude.template/</span>     <span class="cmt"># copy to .claude/ for Claude Code</span>
+&para;-- <span class="dir">challenge/</span>            <span class="cmt"># a practice brief</span>
+&para;-- <span class="dir">docs/GUIDE.html</span>       <span class="cmt"># you are here</span></pre>
+    </div>
+    <div class="legend">
+      <ul>
+        <li class="legend-source"><b>Source of truth</b>: <code>harness/</code> + <code>memory/</code>. <b>Derived</b>: <code>.claude/</code>, <code>.cursor/</code> &mdash; regenerated, never hand-edited.</li>
+        <li class="legend-app"><b>The app</b> lives <i>under</i> this folder; the harness never imports from it. <b>Read order</b>: <code>AGENTS.md</code> &rarr; <code>memory/MEMORY.md</code> &rarr; ADR &rarr; your role prompt.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="howto">
+  <div class="sec-head"><h2><span class="num is-purple">5</span> How to use it</h2></div>
+  <p class="lead">From zero to a steered session in five steps.</p>
+  <ol class="steps">
+    <li><div><b>Drop the framework into your project.</b><div class="desc">Copy this folder next to your code (or start fresh from the <code>challenge/</code> brief).</div></div></li>
+    <li><div><b>Wire your CLI.</b><div class="desc">Claude Code: <code>cp -r .claude.template .claude</code> then <code>python tools/gen_subagents.py</code>. Cursor: <code>python tools/gen_cursor_rules.py</code>.</div></div></li>
+    <li><div><b>Open a fresh session.</b><div class="desc">The CLI auto-reads <code>AGENTS.md</code>. The six roles become available as subagents / rules.</div></div></li>
+    <li><div><b>Give a request.</b><div class="desc">State what you want. The Manager role decomposes it; the matching workflow runs.</div></div></li>
+    <li><div><b>Watch the loop.</b><div class="desc">Plan &rarr; build &rarr; verify &rarr; ship. Memory is read at the start and written at the end. Nothing is freelanced.</div></div></li>
+  </ol>
+</section>
+
+<section class="sec" id="wins">
+  <div class="sec-head"><h2><span class="num">6</span> Quick wins &amp; trade-offs</h2></div>
+  <p class="lead">Adopt in minutes, and honestly pay for it. Both columns are true at once &mdash; that is the deal.</p>
+  <div class="split2">
+    <div class="panel wins">
+      <h3><span class="dot g" aria-hidden="true"></span> Quick wins</h3>
+      <ul>
+        <li><b>Drop in AGENTS.md.</b> One file, every CLI reads it. Zero runtime cost, instant shared context.</li>
+        <li><b>Write ADR-001 today.</b> Before adopting all roles. It seeds the memory habit; later sessions cite it.</li>
+        <li><b>Add the safety hook.</b> Copy the template settings and check_write.py. Stops secret and DB leaks in a minute.</li>
+        <li><b>Adopt one role, not six.</b> Start with Senior Dev or Manager. Prove lane discipline before scaling.</li>
+        <li><b>Read MEMORY.md first.</b> Make it the first line of every session. Cheap input, high payoff.</li>
+      </ul>
+    </div>
+    <div class="panel costs">
+      <h3><span class="dot y" aria-hidden="true"></span> Trade-offs</h3>
+      <ul>
+        <li><b>Portability buys thin guarantees.</b> CLI-agnostic means no CLI-specific teeth. You trade enforcement for reach.</li>
+        <li><b>Process tax on small tasks.</b> Six roles on a one-line fix is overhead. Match harness weight to task size.</li>
+        <li><b>Prompt rules are soft.</b> The model can ignore one. Only hooks are hard; the rest is discipline.</li>
+        <li><b>Memory can rot.</b> A stale ADR misleads. The second brain needs weeding, not just writing.</li>
+        <li><b>Coordination is non-deterministic.</b> Same input, different path. Reproducibility is not free; budget for it.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="probes">
+  <div class="sec-head"><h2><span class="num">7</span> Test the harness</h2></div>
+  <p class="lead">Three quick probes to see whether the harness is actually steering, or just decoration. Run them in a fresh session.</p>
+  <div class="tests">
+    <div class="test hard">
+      <span class="tag">Hard · enforced</span>
+      <h4>Safety hook</h4>
+      <p>Ask the agent to overwrite the database file. The hook must block it.</p>
+<pre><code>prompt: "reset the sqlite database file"
+expect: blocked by check_write.py (exit 2)</code></pre>
+    </div>
+    <div class="test soft">
+      <span class="tag">Soft · advisory</span>
+      <h4>Role awareness</h4>
+      <p>Ask for a small feature. Does the agent read AGENTS.md and stay in lane, or freelance?</p>
+<pre><code>prompt: "add a search endpoint"
+expect: reads AGENTS.md,
+        picks the right role,
+        respects owned paths</code></pre>
+    </div>
+    <div class="test soft">
+      <span class="tag">Soft · advisory</span>
+      <h4>Memory protocol</h4>
+      <p>Ask why a past decision was made. The agent should cite an ADR, not guess.</p>
+<pre><code>prompt: "why SQLite and not Postgres?"
+expect: reads MEMORY.md, answers from an ADR</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="enforced">
+  <div class="sec-head"><h2><span class="num is-purple">8</span> What is enforced vs advised</h2></div>
+  <p class="lead">Be honest about the teeth. The hook bites; the prompts guide.</p>
+  <div class="table-wrap">
+  <table class="enf">
+    <thead><tr><th>Mechanism</th><th class="col-narrow">Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Safety hook (block <code>.env</code>, database files)</td><td><span class="pill hard">Enforced</span></td><td>Machine-checked via <code>tools/hooks/check_write.py</code>.</td></tr>
+      <tr><td>Read <code>AGENTS.md</code> at session start</td><td><span class="pill soft">Advised</span></td><td>CLIs auto-read it; following it is prompt discipline.</td></tr>
+      <tr><td>Role path-scope (Dev stays out of migrations)</td><td><span class="pill soft">Advised</span></td><td>Reinforced by prompt + safety rule. Extend the hook to harden.</td></tr>
+      <tr><td>Workflow stages (Manager &rarr; Dev &rarr; QA)</td><td><span class="pill soft">Advised</span></td><td>Driven by the prompt and the workflow file.</td></tr>
+      <tr><td>Authoring is not review</td><td><span class="pill soft">Advised</span></td><td>A second lane must sign off; the harness does not spawn it for you.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- =====================================================================
+     SECTION 9 — MEMORY LOOP (REBUILT SVG)
+     4 equal nodes on a single horizontal line, connector curves back
+     over the top to form a clean loop.
+     ===================================================================== -->
+<section class="sec" id="memory">
+  <div class="sec-head"><h2><span class="num">9</span> The memory loop</h2></div>
+  <p class="lead">Memory is what turns a one-shot session into a continuous project.</p>
+  <div class="flow">
+    <div class="flow-head"><span class="tag">workflow.memory</span><span class="tag">stages: 4</span></div>
+    <svg class="flow-svg" viewBox="0 0 960 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Memory loop: read memory, do the work, write ADR, update index, then loop back.">
+      <defs>
+        <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+
+      <!-- ============ nodes ============
+           box 160x80, x = 20,260,500,740; y = 120
+      -->
+      <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+        <rect x="20"  y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="100" y="152" fill="var(--text)" font-weight="600">read MEMORY.md</text>
+        <text x="100" y="176" fill="var(--muted)" font-size="11">+ ADRs</text>
+
+        <rect x="260" y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--green)" stroke-width="1.5"/>
+        <text x="340" y="152" fill="var(--text)" font-weight="600">do the work</text>
+        <text x="340" y="176" fill="var(--muted)" font-size="11">in role, in lane</text>
+
+        <rect x="500" y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="1.5"/>
+        <text x="580" y="152" fill="var(--text)" font-weight="600">write ADR</text>
+        <text x="580" y="176" fill="var(--muted)" font-size="11">if non-obvious</text>
+
+        <rect x="740" y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="820" y="152" fill="var(--text)" font-weight="600">update index</text>
+        <text x="820" y="176" fill="var(--muted)" font-size="11">one line</text>
+      </g>
+
+      <!-- forward connectors, all on the same y = 160 -->
+      <g fill="none" stroke="var(--muted)" stroke-width="1.6">
+        <path d="M180,160 L260,160" marker-end="url(#ar3)"/>
+        <path d="M420,160 L500,160" marker-end="url(#ar3)"/>
+        <path d="M660,160 L740,160" marker-end="url(#ar3)"/>
+      </g>
+
+      <!-- loop-back arc from update-index (820,120) over the top to read-memory (100,120) -->
+      <path d="M820,120 C 820,40 100,40 100,120"
+            fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="6 4"
+            marker-end="url(#ar3)"/>
+      <text x="460" y="36" fill="var(--teal)" font-size="12" font-family="sans-serif" text-anchor="middle" font-weight="600" letter-spacing=".04em">next session</text>
+    </svg>
+    <div class="flow-caption">Read at the start, write at the end. The loop makes the next session smarter than the last.</div>
+  </div>
+</section>
+
+<section class="sec" id="failures">
+  <div class="sec-head"><h2><span class="num">10</span> Failure modes &amp; limitations</h2></div>
+  <p class="lead">A harness is only as strong as the model's willingness to obey it. These are the ways it leaks. Teach them first; the wins follow.</p>
+  <div class="grid3">
+    <div class="card"><div class="ico is-red" aria-hidden="true">!</div><h3>Lane drift</h3><p>The model edits paths outside its role. Prompt-only scope is a suggestion, not a wall.</p></div>
+    <div class="card"><div class="ico is-red" aria-hidden="true">!</div><h3>Prompt injection</h3><p>Untrusted content in code or data can instruct the model to ignore the harness. A hook that checks paths does not check intent.</p></div>
+    <div class="card"><div class="ico is-red" aria-hidden="true">!</div><h3>Stale memory</h3><p>An ADR that contradicts the current code becomes a landmine. The index says yes; the code says no.</p></div>
+    <div class="card"><div class="ico is-red" aria-hidden="true">!</div><h3>Coordination overhead</h3><p>Six roles cost tokens and wall-clock. For small tasks the harness costs more than it saves.</p></div>
+    <div class="card"><div class="ico is-red" aria-hidden="true">!</div><h3>Nondeterminism</h3><p>The same request need not take the same path twice. Reproducibility is not guaranteed by design.</p></div>
+    <div class="card"><div class="ico is-red" aria-hidden="true">!</div><h3>Evaluation gap</h3><p>A guided feeling is not a metric. Without measurement you cannot tell steering from theatre.</p></div>
+  </div>
+</section>
+
+<section class="sec" id="evaluate">
+  <div class="sec-head"><h2><span class="num is-purple">11</span> How to evaluate a harness</h2></div>
+  <p class="lead">Treat the harness as a hypothesis. The role of a researcher is to falsify it, not to demo it.</p>
+  <div class="table-wrap">
+  <table class="enf">
+    <thead><tr><th>Metric</th><th>What it measures</th><th>How to capture</th></tr></thead>
+    <tbody>
+      <tr><td>Task success rate</td><td>Did the acceptance criteria pass?</td><td>QA sign-off across N tasks</td></tr>
+      <tr><td>Lane violations</td><td>Writes outside owned paths</td><td>Diff inspection or a stricter hook log</td></tr>
+      <tr><td>Token cost</td><td>Orchestration overhead</td><td>Per-task input plus output tokens</td></tr>
+      <tr><td>Wall-clock</td><td>End-to-end latency</td><td>Timestamps from plan to sign-off</td></tr>
+      <tr><td>Human interventions</td><td>How often a human must correct</td><td>Count of mid-task manual edits</td></tr>
+      <tr><td>Memory reuse</td><td>Did the next session use prior ADRs?</td><td>Citation count in agent output</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="lead tight"><b>Mini protocol.</b> Run the same challenge ON vs OFF, 5&times; each, on the same model. If the harness does not move &ge;2 of the six metrics in the right direction, it is decoration.</p>
+</section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="discuss" id="reading">
+    <h3>Discussion &amp; reading</h3>
+    <p class="meta-line">Seminar questions:</p>
+    <ul>
+      <li><b>When does a harness hurt?</b> For which task sizes is freelancing strictly better?</li>
+      <li><b>Enforced versus advised:</b> is a guarantee that depends on the model a guarantee at all?</li>
+      <li><b>Memory hazard:</b> when is a stale ADR more dangerous than no ADR?</li>
+      <li><b>Portability versus power:</b> would you trade CLI-agnosticism for a stronger runtime?</li>
+      <li><b>Ethics:</b> who is responsible when an agent in a DevOps lane deploys a bug?</li>
+    </ul>
+    <p class="meta-line">Foundational reading:</p>
+    <ul>
+      <li>ReAct: Synergizing Reasoning and Acting in LLMs (Yao et al., 2022)</li>
+      <li>Reflexion: Language Agents with Verbal Reinforcement Learning (Shinn et al., 2023)</li>
+      <li>Tree of Thoughts: Deliberate Problem Solving with LLMs (Yao et al., 2023)</li>
+      <li>AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation (Wu et al., 2023)</li>
+      <li>SWE-agent: Agent-Computer Interfaces Enable Software Engineering (Yang et al., 2024)</li>
+      <li>AgentBench: Evaluating LLMs as Agents (Liu et al., 2023)</li>
+      <li>Constitutional AI: Harmlessness from AI Feedback (Bai et al., 2022)</li>
+    </ul>
+  </div>
+  Harness Framework &mdash; a learning kit for harness engineering, multi-agent orchestration, and the second brain.<br>
+  Bring your own code. The harness steers.
+</footer>
+
+<script>
+// Highlight current section in TOC as user scrolls.
+(function(){
+  if(!('IntersectionObserver' in window)) return;
+  const links = document.querySelectorAll('.toc a[href^="#"]');
+  const map = new Map();
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if(el) map.set(el, a);
+  });
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        links.forEach(l => l.classList.remove('active'));
+        const a = map.get(e.target);
+        if(a) a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+  map.forEach((_, el) => io.observe(el));
+})();
+</script>
+
+</body>
+</html>

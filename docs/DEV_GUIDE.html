@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Developer guide to the Harness Framework: integrate with Claude Code / Cursor / Codex, write role prompts, wire hooks, debug the pipeline, contribute back.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="var(--bg)">
+<title>Harness Framework &mdash; Developer Guide</title>
+<style>
+/* =========================================================================
+   1. DESIGN TOKENS
+   ========================================================================= */
+:root{
+  --bg:        #0b0e14;
+  --panel:     #141926;
+  --panel-2:   #1a2030;
+  --border:    #232b3d;
+  --border-2:  #2e3850;
+
+  --text:      #e7ecf5;
+  --text-2:    #c2cad8;
+  --muted:     #8a94a8;
+  --muted-2:   #6a7388;
+  --code-text: #b6cfff;
+  --link-hover:#9cc3ff;
+
+  --accent:    #6ea8fe;
+  --accent-2:  #a78bfa;
+  --green:     #5fcf80;
+  --yellow:    #f0c674;
+  --red:       #ff7b72;
+  --teal:      #56d4bf;
+
+  --r-mgr:     var(--accent);
+  --r-db:      var(--accent-2);
+  --r-dev:     var(--green);
+  --r-design:  var(--yellow);
+  --r-qa:      var(--teal);
+  --r-devops:  var(--red);
+
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  72px;
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,.03) inset, 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 1px 0 rgba(255,255,255,.04) inset, 0 6px 18px rgba(0,0,0,.35);
+
+  --tree-bg:   #0a0d15;
+  --gate-bg:   #0e1a1f;
+  --accent-hi: #4f8df0;
+
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-24: 24px;
+  --fs-30: 30px;
+  --fs-44: 44px;
+
+  --container: 1180px;
+  --toc-width: 240px;
+  --header-h: 64px;
+  --anchor-offset: calc(var(--header-h) + var(--s-5));
+}
+
+/* =========================================================================
+   2. RESET & BASE
+   ========================================================================= */
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth; -webkit-text-size-adjust:100%; scroll-padding-top:var(--anchor-offset)}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+body{
+  margin:0;
+  overflow-x:hidden;
+  background:var(--bg);
+  color:var(--text);
+  font: 400 var(--fs-16)/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+img,svg{max-width:100%;display:block}
+h1,h2,h3,h4,h5{scroll-margin-top:var(--anchor-offset);margin:0}
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:6px}
+a{color:var(--accent);text-decoration:none;transition:color .15s ease}
+a:hover{color:var(--link-hover);text-decoration:underline; text-underline-offset:3px}
+a:focus-visible{outline-offset:5px}
+
+code,pre,kbd,samp{font-family:"JetBrains Mono","Fira Code","SF Mono",Consolas,Monaco,monospace}
+code{background:rgba(110,168,254,.10);border:1px solid rgba(110,168,254,.25);padding:1px 6px;border-radius:var(--r-xs);color:var(--code-text);font-size:.88em;white-space:nowrap}
+pre{
+  background:var(--tree-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:var(--s-4);
+  overflow-x:auto;
+  overflow-y:hidden;
+  color:var(--text-2);
+  font-size:var(--fs-13);
+  line-height:1.55;
+  margin:var(--s-3) 0 0;
+  max-width:100%;
+  white-space:pre;
+  tab-size:2;
+}
+pre code{background:transparent;border:0;padding:0;color:inherit;white-space:pre;display:block}
+@media (max-width: 600px){
+  pre{font-size:12px; padding:var(--s-3)}
+}
+
+kbd{
+  background:var(--panel-2);
+  border:1px solid var(--border-2);
+  border-bottom-width:2px;
+  border-radius:var(--r-xs);
+  padding:1px 6px;
+  font-size:.85em;
+  color:var(--text-2);
+}
+
+/* =========================================================================
+   3. LAYOUT SHELL
+   ========================================================================= */
+.page{display:grid;grid-template-columns:var(--toc-width) 1fr;gap:var(--s-7);max-width:var(--container);margin:0 auto;padding:var(--s-6) var(--s-5) var(--s-8)}
+@media (max-width: 960px){.page{grid-template-columns:1fr;padding-top:var(--s-5)}}
+
+/* =========================================================================
+   4. HERO
+   ========================================================================= */
+.hero{
+  position:relative;
+  padding:calc(var(--s-8) + var(--s-4)) var(--s-4) var(--s-7);
+  text-align:center;
+  border-bottom:1px solid var(--border);
+  background:
+    radial-gradient(900px 380px at 50% -50px, rgba(95,207,128,.22), transparent 65%),
+    radial-gradient(700px 360px at 50% 30%, rgba(110,168,254,.10), transparent 70%),
+    linear-gradient(180deg, var(--bg), var(--bg));
+  overflow:hidden;
+  min-width:0;
+}
+.hero-inner{width:100%;max-width:780px;margin:0 auto;padding:0}
+.hero::after{
+  content:"";
+  position:absolute;inset:auto 0 0 0;height:1px;
+  background:linear-gradient(90deg, transparent, rgba(95,207,128,.4), transparent);
+}
+.hero .eyebrow{
+  display:inline-flex;align-items:center;gap:var(--s-2);
+  color:var(--green);
+  font-size:var(--fs-12);font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+}
+.hero .eyebrow::before{content:"";width:18px;height:1px;background:var(--green);opacity:.6}
+.hero h1{
+  font-size:clamp(28px, 5vw, var(--fs-44));
+  margin:var(--s-3) 0 var(--s-4);
+  letter-spacing:-.025em;
+  line-height:1.1;
+  font-weight:700;
+  color:#fff;
+  overflow-wrap:break-word;
+}
+.hero p.sub{font-size:clamp(15px, 4vw, var(--fs-18));color:var(--muted);max-width:640px;margin:0 auto;line-height:1.55}
+.hero .quote{
+  margin:var(--s-5) auto 0;max-width:620px;
+  font-style:italic;color:var(--text-2);font-size:var(--fs-15);
+  padding:var(--s-3) var(--s-5);
+  border-left:2px solid var(--green);
+  background:rgba(95,207,128,.05);
+  border-radius:0 var(--r-sm) var(--r-sm) 0;
+}
+.hero .quote b{color:#fff;font-style:normal;font-weight:600}
+.hero .badges{
+  margin-top:var(--s-5);
+  display:flex;gap:var(--s-2);
+  justify-content:center;flex-wrap:wrap;
+}
+.hero .badges span{
+  font-size:var(--fs-12);font-weight:500;
+  color:var(--text-2);
+  border:1px solid var(--border);
+  background:rgba(20,25,38,.6);
+  padding:5px 12px;border-radius:999px;
+}
+.hero .badges span.role-badge{color:var(--green);border-color:rgba(95,207,128,.35)}
+
+/* =========================================================================
+   5. STICKY TOP BAR
+   ========================================================================= */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  min-height:var(--header-h);
+  background:rgba(11,14,20,.78);
+  -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:none;
+  align-items:center;gap:var(--s-3);
+  padding:var(--s-2) var(--s-4);
+  flex-wrap:wrap;
+}
+.topbar .brand{font-weight:700;font-size:var(--fs-14);color:var(--text);letter-spacing:.01em;white-space:nowrap}
+.topbar .brand span{color:var(--green)}
+.topbar nav{display:flex;gap:var(--s-3);margin-left:auto;flex-wrap:wrap}
+.topbar nav a{color:var(--muted);font-size:var(--fs-13);font-weight:500;white-space:nowrap}
+.topbar nav a:hover{color:var(--green);text-decoration:none}
+@media (max-width: 960px){.topbar{display:flex}}
+
+/* =========================================================================
+   6. SIDEBAR TOC
+   ========================================================================= */
+.toc{
+  position:sticky;top:var(--s-6);
+  align-self:start;
+  max-height:calc(100vh - var(--s-7));
+  overflow:auto;
+  padding-right:var(--s-2);
+}
+@media (max-width: 960px){.toc{display:none}}
+.toc h4{
+  font-size:var(--fs-12);
+  text-transform:uppercase;letter-spacing:.14em;
+  color:var(--muted-2);
+  font-weight:700;
+  margin:0 0 var(--s-3) var(--s-3);
+}
+.toc ol{list-style:none;margin:0;padding:0;counter-reset:toc}
+.toc li{counter-increment:toc;position:relative;margin:2px 0}
+.toc a{
+  display:flex;align-items:center;gap:var(--s-3);
+  padding:var(--s-2) var(--s-3);
+  color:var(--muted);
+  font-size:var(--fs-13);font-weight:500;
+  border-radius:var(--r-sm);
+  transition:background .15s ease, color .15s ease;
+  text-decoration:none;
+}
+.toc a::before{
+  content:counter(toc, decimal-leading-zero);
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;font-weight:600;
+  color:var(--muted-2);
+  width:22px;flex:none;
+}
+.toc a:hover{background:rgba(95,207,128,.06);color:var(--text-2)}
+.toc a.active{background:rgba(95,207,128,.12);color:var(--green)}
+
+/* =========================================================================
+   7. SECTIONS
+   ========================================================================= */
+main{min-width:0}
+.sec{margin-block:var(--s-8)}
+.sec:first-child{margin-top:var(--s-7)}
+.sec-head{display:flex;align-items:baseline;gap:var(--s-4);margin-bottom:var(--s-3)}
+.sec h2{
+  font-size:var(--fs-30);
+  letter-spacing:-.015em;
+  display:flex;align-items:center;gap:var(--s-3);
+  font-weight:700;
+  color:var(--text);
+}
+.sec h2 .num{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;height:36px;padding:0 10px;
+  background:linear-gradient(135deg, var(--green), #4fb86a);
+  color:var(--bg);
+  border-radius:var(--r-sm);
+  font-size:var(--fs-13);font-weight:800;
+  font-family:"JetBrains Mono",monospace;
+  box-shadow:0 6px 16px rgba(95,207,128,.25);
+}
+.sec h2 .num.is-purple{background:linear-gradient(135deg, var(--accent), var(--accent-hi));box-shadow:0 6px 16px rgba(110,168,254,.25)}
+.sec h3{font-size:var(--fs-18);font-weight:600;color:var(--text);margin:var(--s-6) 0 var(--s-3);letter-spacing:-.01em}
+.sec h4{font-size:var(--fs-15);font-weight:600;color:var(--text);margin:var(--s-4) 0 var(--s-2)}
+.sec .lead{color:var(--muted);font-size:var(--fs-15);margin:0 0 var(--s-6);max-width:780px;line-height:1.65}
+.sec .prose{color:var(--text-2);font-size:var(--fs-15);line-height:1.7;max-width:780px;margin:0 0 var(--s-5)}
+
+/* =========================================================================
+   8. PRIMITIVES
+   ========================================================================= */
+.card{
+  background:linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+  box-shadow:var(--shadow-1);
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  display:flex;flex-direction:column;
+}
+.card:hover{transform:translateY(-2px);border-color:var(--border-2);box-shadow:var(--shadow-2)}
+.card .ico{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;
+  border-radius:var(--r-sm);
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-13);font-weight:700;
+  background:rgba(95,207,128,.10);
+  color:var(--green);
+  margin-bottom:var(--s-3);
+}
+.card .ico.is-purple{background:rgba(167,139,250,.12);color:var(--accent-2)}
+.card .ico.is-blue{background:rgba(110,168,254,.12);color:var(--accent)}
+.card .ico.is-red{background:rgba(255,123,114,.12);color:var(--red)}
+.card .ico.is-yellow{background:rgba(240,198,116,.12);color:var(--yellow)}
+.card .ico.is-teal{background:rgba(86,212,191,.12);color:var(--teal)}
+.card h3{margin:0 0 var(--s-2);font-size:var(--fs-16);font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.card p{margin:0 0 var(--s-3);color:var(--muted);font-size:var(--fs-14);line-height:1.6}
+.card pre{margin-top:auto}
+
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle}
+.dot.g{background:var(--green);box-shadow:0 0 0 3px rgba(95,207,128,.15)}
+.dot.y{background:var(--yellow);box-shadow:0 0 0 3px rgba(240,198,116,.15)}
+.dot.r{background:var(--red);box-shadow:0 0 0 3px rgba(255,123,114,.15)}
+.dot.t{background:var(--teal);box-shadow:0 0 0 3px rgba(86,212,191,.15)}
+
+.pill{
+  font-size:var(--fs-12);font-weight:600;
+  padding:3px 10px;border-radius:999px;
+  display:inline-block;white-space:nowrap;
+  letter-spacing:.01em;
+}
+.pill.hard{background:rgba(95,207,128,.12);color:var(--green);border:1px solid rgba(95,207,128,.35)}
+.pill.soft{background:rgba(240,198,116,.12);color:var(--yellow);border:1px solid rgba(240,198,116,.35)}
+.pill.info{background:rgba(110,168,254,.12);color:var(--accent);border:1px solid rgba(110,168,254,.35)}
+
+/* =========================================================================
+   9. GRID HELPERS
+   ========================================================================= */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4)}
+@media (max-width: 900px){.grid3{grid-template-columns:repeat(2,1fr)}}
+@media (max-width: 600px){.grid3{grid-template-columns:1fr}}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s-4)}
+@media (max-width: 760px){.grid2{grid-template-columns:1fr}}
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-4)}
+@media (max-width: 760px){.split2{grid-template-columns:1fr}}
+
+/* =========================================================================
+   10. CHEAT SHEET (top-of-mind reference)
+   ========================================================================= */
+.cheat{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-3) var(--s-5);
+  margin:0 0 var(--s-6);
+}
+.cheat-row{
+  display:grid;
+  grid-template-columns:120px 1fr;
+  gap:var(--s-4);
+  align-items:baseline;
+  padding:var(--s-2) 0;
+  border-bottom:1px dashed var(--border);
+}
+.cheat-row:last-child{border-bottom:0}
+.cheat-row .k{
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-12);
+  color:var(--green);
+  font-weight:600;
+  white-space:nowrap;
+}
+.cheat-row .v{
+  font-size:var(--fs-13);
+  color:var(--text-2);
+  line-height:1.55;
+  min-width:0;
+}
+.cheat-row .v code{font-size:var(--fs-12); white-space:normal; word-break:break-word}
+@media (max-width: 760px){
+  .cheat-row{grid-template-columns:1fr; gap:2px; padding:var(--s-2) 0}
+}
+
+/* =========================================================================
+   11. ROLES
+   ========================================================================= */
+.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4)}
+@media (max-width: 900px){.roles{grid-template-columns:repeat(2,1fr)}}
+@media (max-width: 600px){.roles{grid-template-columns:1fr}}
+.role{
+  position:relative;overflow:hidden;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5) var(--s-5) var(--s-4);
+  box-shadow:var(--shadow-1);
+  transition:transform .2s ease, border-color .2s ease;
+}
+.role::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.role::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg, rgba(255,255,255,.02), transparent 60%);pointer-events:none}
+.role:hover{transform:translateY(-2px);border-color:var(--border-2)}
+.role.r-manager::before{background:var(--r-mgr)}
+.role.r-db::before{background:var(--r-db)}
+.role.r-dev::before{background:var(--r-dev)}
+.role.r-design::before{background:var(--r-design)}
+.role.r-qa::before{background:var(--r-qa)}
+.role.r-devops::before{background:var(--r-devops)}
+.role h4{margin:0 0 var(--s-2);font-size:var(--fs-16);font-weight:600;display:flex;align-items:center;gap:var(--s-2);color:var(--text)}
+.role h4 .pip{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none}
+.role.r-manager h4 .pip{background:var(--r-mgr)}
+.role.r-db h4 .pip{background:var(--r-db)}
+.role.r-dev h4 .pip{background:var(--r-dev)}
+.role.r-design h4 .pip{background:var(--r-design)}
+.role.r-qa h4 .pip{background:var(--r-qa)}
+.role.r-devops h4 .pip{background:var(--r-devops)}
+.role p{margin:0 0 var(--s-3);color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+.role .owns{
+  margin:0;padding-top:var(--s-3);
+  border-top:1px dashed var(--border);
+  font-size:var(--fs-12);color:var(--muted-2);
+  font-family:"JetBrains Mono",monospace;
+  display:flex;flex-wrap:wrap;gap:var(--s-2);
+}
+.role .owns code{font-size:11px;background:rgba(95,207,128,.06);border-color:rgba(95,207,128,.2)}
+
+/* =========================================================================
+   12. FLOW PANEL + SVG
+   ========================================================================= */
+.flow{
+  background:linear-gradient(180deg, var(--panel) 0%, rgba(20,25,38,.6) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:var(--s-5);
+}
+.flow-head{display:flex;align-items:center;gap:var(--s-3);margin-bottom:var(--s-4);flex-wrap:wrap}
+.flow-head .tag{font-family:"JetBrains Mono",monospace;font-size:var(--fs-12);color:var(--muted);letter-spacing:.04em}
+.flow-head .sep{flex:1;height:1px;background:var(--border);min-width:var(--s-3)}
+.flow-svg{display:block;width:100%;height:auto;margin:0 auto}
+.flow-caption{text-align:center;color:var(--muted);font-size:var(--fs-13);margin-top:var(--s-4);line-height:1.55}
+
+/* dev extension: SVG fullwidth on top, implementation map fullwidth below */
+.flow-block{display:grid;gap:var(--s-4);margin-top:var(--s-4)}
+.notes{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+}
+.notes > h4{
+  margin:0 0 var(--s-4);
+  font-size:var(--fs-13);
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--green);
+  padding-bottom:var(--s-3);
+  border-bottom:1px solid var(--border);
+}
+.notes-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:var(--s-3);
+}
+.notes-grid .step{margin:0}
+.notes-grid .step .cmd{font-size:var(--fs-12); overflow-x:auto}
+
+/* horizontal pipeline (memory loop) — 4 stages in a row with arrow connectors */
+.pipeline{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:0;
+  margin-top:var(--s-2);
+}
+@media (max-width: 820px){.pipeline{grid-template-columns:repeat(2, 1fr); gap:var(--s-3)}}
+@media (max-width: 480px){.pipeline{grid-template-columns:1fr}}
+.pipeline .stage{
+  position:relative;
+  background:linear-gradient(180deg, var(--panel-2) 0%, rgba(20,25,38,.4) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:var(--s-4) var(--s-3);
+  display:flex;flex-direction:column;
+  min-width:0;
+}
+.pipeline .stage + .stage{
+  margin-left:var(--s-3);
+}
+@media (min-width: 821px){
+  /* arrow connector between stages */
+  .pipeline .stage:not(:last-child)::after{
+    content:"";
+    position:absolute;
+    right:calc(var(--s-3) * -1 + 4px);
+    top:50%;
+    transform:translateY(-50%);
+    width:0;height:0;
+    border-left:8px solid var(--green);
+    border-top:6px solid transparent;
+    border-bottom:6px solid transparent;
+    z-index:1;
+  }
+  /* hide margin when arrow present */
+  .pipeline .stage + .stage{margin-left:0; padding-left:calc(var(--s-3) + var(--s-3))}
+}
+.pipeline .stage .num{
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-12);font-weight:700;
+  color:var(--green);
+  letter-spacing:.05em;
+}
+.pipeline .stage .name{
+  font-size:var(--fs-15);font-weight:600;
+  color:var(--text);
+  margin:var(--s-1) 0 var(--s-2);
+  line-height:1.2;
+}
+.pipeline .stage .op{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+  color:var(--muted-2);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:var(--s-2);
+}
+.pipeline .stage .op.is-r{color:var(--accent)}
+.pipeline .stage .op.is-w{color:var(--green)}
+.pipeline .stage .cmd{
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-12);
+  color:var(--code-text);
+  background:var(--tree-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-xs);
+  padding:var(--s-2) var(--s-3);
+  white-space:pre-wrap;
+  word-break:break-word;
+  margin-top:auto;
+  line-height:1.5;
+}
+
+/* pipeline with parallel group (feature workflow) — sequential stages stacked
+   vertically with a downward arrow between each row; the parallel group contains
+   3 sub-stages side by side. This avoids cramming wide code into narrow columns. */
+.pipeline-flow{
+  display:flex;flex-direction:column;
+  gap:0;
+  margin-top:var(--s-2);
+}
+.pipeline-flow > .stage,
+.pipeline-flow > .group{
+  position:relative;
+  background:linear-gradient(180deg, var(--panel-2) 0%, rgba(20,25,38,.4) 100%);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:var(--s-4) var(--s-5);
+}
+.pipeline-flow > .stage{display:flex;flex-direction:column;min-width:0}
+.pipeline-flow > .stage:not(:last-child),
+.pipeline-flow > .group:not(:last-child){margin-bottom:var(--s-7)}
+/* downward arrow between sequential stages — centered, large enough to see */
+.pipeline-flow > .stage:not(:last-child)::after,
+.pipeline-flow > .group:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:calc(var(--s-7) * -1 + 4px);
+  transform:translateX(-50%);
+  width:0;height:0;
+  border-left:10px solid transparent;
+  border-right:10px solid transparent;
+  border-top:12px solid var(--green);
+  z-index:1;
+}
+.pipeline-flow .stage .num{
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-12);font-weight:700;
+  color:var(--green);
+  letter-spacing:.05em;
+}
+.pipeline-flow .stage .name{
+  font-size:var(--fs-18);font-weight:600;
+  color:var(--text);
+  margin:var(--s-1) 0 var(--s-2);
+  line-height:1.2;
+}
+.pipeline-flow .stage .op{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+  color:var(--green);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:var(--s-3);
+}
+.pipeline-flow .stage .cmd{
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-13);
+  color:var(--code-text);
+  background:var(--tree-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-xs);
+  padding:var(--s-3) var(--s-4);
+  white-space:pre-wrap;
+  word-break:break-word;
+  line-height:1.55;
+}
+/* role-tinted left border on each stage */
+.pipeline-flow > .stage:nth-child(1){border-left:3px solid var(--r-mgr)}
+.pipeline-flow > .stage:nth-child(3){border-left:3px solid var(--r-qa)}
+.pipeline-flow > .stage:nth-child(4){border-left:3px solid var(--r-devops)}
+.pipeline-flow > .stage:nth-child(5){border-left:3px solid var(--r-mgr)}
+/* parallel-group container */
+.pipeline-flow > .group{
+  background:rgba(167,139,250,.04);
+  border:1px dashed rgba(167,139,250,.35);
+  border-left:3px solid var(--r-db);
+  display:flex;flex-direction:column;
+}
+.pipeline-flow .group .group-label{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;
+  color:var(--accent-2);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin-bottom:var(--s-3);
+  display:block;
+}
+.pipeline-flow .group .lanes{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:var(--s-3);
+}
+@media (max-width: 720px){.pipeline-flow .group .lanes{grid-template-columns:1fr}}
+.pipeline-flow .group .lanes .stage{
+  background:var(--panel);
+  padding:var(--s-3) var(--s-4);
+  margin-bottom:0;
+}
+.pipeline-flow .group .lanes .stage:not(:last-child)::after{display:none}
+.pipeline-flow .group .lanes .stage .name{font-size:var(--fs-15)}
+.pipeline-flow .group .lanes .stage .cmd{font-size:var(--fs-12)}
+.notes .step{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:var(--s-2) var(--s-3);
+  padding:var(--s-3);
+  background:rgba(20,25,38,.4);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+}
+.notes .step .label{
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-12);
+  font-weight:700;
+  color:var(--green);
+  white-space:nowrap;
+}
+.notes .step .role{font-size:var(--fs-12);color:var(--muted)}
+.notes .step .cmd{
+  grid-column:1 / -1;
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-12);
+  color:var(--code-text);
+  background:var(--tree-bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-xs);
+  padding:var(--s-2) var(--s-3);
+  margin-top:var(--s-2);
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.notes .gates{
+  margin-top:var(--s-4);
+  padding-top:var(--s-4);
+  border-top:1px dashed var(--border);
+  display:grid;
+  gap:var(--s-2);
+}
+.notes .gate{
+  display:flex;align-items:center;flex-wrap:wrap;gap:var(--s-2);
+  padding:var(--s-2) var(--s-3);
+  border-left:3px solid var(--teal);
+  background:rgba(86,212,191,.06);
+  border-radius:0 var(--r-sm) var(--r-sm) 0;
+  font-size:var(--fs-13);
+  color:var(--text-2);
+}
+.notes .gate.deploy{border-left-color:var(--red);background:rgba(255,123,114,.06)}
+.notes .gate b{color:var(--teal);font-weight:600;flex:none}
+.notes .gate.deploy b{color:var(--red)}
+
+/* =========================================================================
+   13. TREE + LEGEND
+   ========================================================================= */
+.tree-wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--s-5);align-items:start}
+@media (max-width: 820px){.tree-wrap{grid-template-columns:1fr}}
+.tree{
+  background:var(--tree-bg);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:var(--s-5);
+  font-size:var(--fs-13);overflow-x:auto;overflow-y:hidden;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+  max-width:100%;
+}
+.tree pre{margin:0;padding:0;background:transparent;border:0;white-space:pre}
+.tree .dir{color:var(--accent);font-weight:600}
+.tree .cmt{color:var(--muted-2)}
+.legend ul{margin:0;padding-left:1.1em;list-style:none}
+.legend li{margin:var(--s-3) 0;color:var(--muted);font-size:var(--fs-14);line-height:1.55;position:relative;padding-left:var(--s-3)}
+.legend li b{color:var(--text);font-weight:600}
+.legend-source b{color:var(--accent)}
+.legend-derived b{color:var(--green)}
+.legend-app b{color:var(--yellow)}
+
+/* =========================================================================
+   14. STEPS
+   ========================================================================= */
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:var(--s-3)}
+.steps li{
+  position:relative;
+  display:grid;grid-template-columns:40px 1fr;gap:var(--s-4);align-items:start;
+  padding:var(--s-4) var(--s-5);
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  transition:border-color .15s ease;
+}
+.steps li:hover{border-color:var(--border-2)}
+.steps li::before{
+  counter-increment:s;content:counter(s, decimal-leading-zero);
+  font-family:"JetBrains Mono",monospace;
+  width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg, var(--green), #4fb86a);
+  color:var(--bg);
+  border-radius:var(--r-sm);
+  font-weight:800;font-size:var(--fs-14);
+  box-shadow:0 4px 10px rgba(95,207,128,.25);
+  flex:none;
+}
+.steps li b{color:var(--text);font-weight:600;font-size:var(--fs-15);display:block;margin-bottom:2px}
+.steps li .desc{color:var(--muted);font-size:var(--fs-14);line-height:1.55; min-width:0}
+.steps li code{font-size:var(--fs-12)}
+.steps li pre{margin-top:var(--s-2)}
+
+/* =========================================================================
+   15. CALLOUTS & CHECKS
+   ========================================================================= */
+.callout{
+  background:linear-gradient(180deg, rgba(95,207,128,.06), rgba(95,207,128,.02));
+  border:1px solid rgba(95,207,128,.3);
+  border-left:3px solid var(--green);
+  border-radius:var(--r-sm);
+  padding:var(--s-4) var(--s-5);
+  margin:var(--s-4) 0;
+  font-size:var(--fs-14);
+  color:var(--text-2);
+  line-height:1.6;
+}
+.callout b{color:var(--green);font-weight:600}
+.callout.warn{
+  background:linear-gradient(180deg, rgba(240,198,116,.06), rgba(240,198,116,.02));
+  border-color:rgba(240,198,116,.3);
+  border-left-color:var(--yellow);
+}
+.callout.warn b{color:var(--yellow)}
+.callout.err{
+  background:linear-gradient(180deg, rgba(255,123,114,.06), rgba(255,123,114,.02));
+  border-color:rgba(255,123,114,.3);
+  border-left-color:var(--red);
+}
+.callout.err b{color:var(--red)}
+.callout code{font-size:var(--fs-12)}
+
+.checks{list-style:none;padding:0;margin:var(--s-4) 0;display:grid;gap:var(--s-2)}
+.checks li{
+  display:grid;grid-template-columns:24px 1fr;gap:var(--s-3);align-items:start;
+  padding:var(--s-2) var(--s-3);
+  background:rgba(20,25,38,.4);
+  border:1px solid var(--border);
+  border-radius:var(--r-sm);
+  font-size:var(--fs-14);
+  color:var(--text-2);
+}
+.checks li::before{
+  content:"\2713";
+  color:var(--green);
+  font-weight:800;
+  text-align:center;
+  font-family:"JetBrains Mono",monospace;
+  line-height:1.4;
+}
+
+/* =========================================================================
+   16. TESTS
+   ========================================================================= */
+.tests{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s-4)}
+@media (max-width: 900px){.tests{grid-template-columns:1fr}}
+.test{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+  display:flex;flex-direction:column;
+  transition:border-color .15s ease, transform .15s ease;
+}
+.test:hover{border-color:var(--border-2);transform:translateY(-1px)}
+.test .tag{font-size:var(--fs-12);font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:999px;align-self:flex-start;flex:none}
+.test.hard .tag{background:rgba(95,207,128,.12);color:var(--green);border:1px solid rgba(95,207,128,.35)}
+.test.soft .tag{background:rgba(240,198,116,.12);color:var(--yellow);border:1px solid rgba(240,198,116,.35)}
+.test h4{margin:var(--s-3) 0 var(--s-2);font-size:var(--fs-16);font-weight:600;color:var(--text)}
+.test p{margin:0 0 var(--s-3);font-size:var(--fs-14);color:var(--muted);line-height:1.55}
+.test pre{margin:0;font-size:var(--fs-12);line-height:1.55}
+
+/* =========================================================================
+   17. TABLES
+   ========================================================================= */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-md);background:var(--panel);-webkit-overflow-scrolling:touch;margin:var(--s-4) 0}
+table.enf{
+  width:100%;border-collapse:collapse;font-size:var(--fs-14);
+  min-width:480px;
+}
+table.enf th,table.enf td{
+  padding:var(--s-3) var(--s-4);
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+table.enf thead th{background:rgba(26,32,48,.6);color:var(--muted-2);font-size:var(--fs-12);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+table.enf tbody td{color:var(--text-2)}
+table.enf tbody td:first-child{color:var(--text);font-weight:500;white-space:nowrap}
+table.enf tbody tr:last-child td{border-bottom:none}
+table.enf tbody tr:hover{background:rgba(95,207,128,.03)}
+
+/* =========================================================================
+   18. SPLIT PANELS
+   ========================================================================= */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:var(--s-5);
+  position:relative;
+  box-shadow:var(--shadow-1);
+}
+.panel.ok{border-top:3px solid var(--green)}
+.panel.warn{border-top:3px solid var(--yellow)}
+.panel.err{border-top:3px solid var(--red)}
+.panel h3{margin:0 0 var(--s-4);font-size:var(--fs-18);font-weight:600;display:flex;align-items:center;gap:var(--s-2);color:var(--text)}
+.panel ul{margin:0;padding-left:1.1em}
+.panel li{margin:var(--s-3) 0;color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+.panel li b{color:var(--text);font-weight:600}
+.panel li::marker{color:var(--green)}
+.panel.warn li::marker{color:var(--yellow)}
+.panel.err li::marker{color:var(--red)}
+
+/* =========================================================================
+   19. RECIPE CARDS (with numbered badge)
+   ========================================================================= */
+.recipe .ico{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;
+  border-radius:50%;
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-13);font-weight:700;
+  background:rgba(95,207,128,.10);
+  color:var(--green);
+  margin-bottom:var(--s-3);
+}
+
+/* =========================================================================
+   20. DECISION TREE (which file to edit)
+   ========================================================================= */
+.tree-decision{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:var(--s-3);
+  margin:var(--s-4) 0;
+}
+@media (max-width: 760px){.tree-decision{grid-template-columns:1fr}}
+.tree-decision details{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  padding:0;
+}
+.tree-decision summary{
+  cursor:pointer;
+  padding:var(--s-3) var(--s-4);
+  font-weight:600;
+  color:var(--text);
+  font-size:var(--fs-14);
+  list-style:none;
+  display:flex;align-items:center;gap:var(--s-3);
+}
+.tree-decision summary::-webkit-details-marker{display:none}
+.tree-decision summary::before{
+  content:"?";
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;
+  background:rgba(95,207,128,.12);
+  color:var(--green);
+  font-family:"JetBrains Mono",monospace;
+  font-size:var(--fs-13);font-weight:700;
+  flex:none;
+}
+.tree-decision details[open] summary::before{content:"\2713"; background:rgba(95,207,128,.25)}
+.tree-decision details > div{
+  padding:var(--s-3) var(--s-4) var(--s-4) calc(var(--s-4) + 22px + var(--s-3));
+  color:var(--text-2);
+  font-size:var(--fs-13);
+  line-height:1.6;
+  border-top:1px dashed var(--border);
+}
+.tree-decision details > div code{font-size:var(--fs-12)}
+.tree-decision details > div strong{color:var(--green)}
+
+/* =========================================================================
+   21. FOOTER & SKIP LINK
+   ========================================================================= */
+.discuss ul{margin:0;padding-left:1.1em}
+.discuss li{margin:var(--s-2) 0;color:var(--muted);font-size:var(--fs-14);line-height:1.55}
+.discuss li b{color:var(--text);font-weight:600}
+
+footer{
+  border-top:1px solid var(--border);
+  padding:var(--s-7) var(--s-5);
+  text-align:center;color:var(--muted);font-size:var(--fs-13);
+  background:linear-gradient(180deg, transparent, rgba(11,14,20,.6));
+}
+footer .discuss{
+  max-width:780px;margin:0 auto var(--s-6);text-align:left;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:var(--s-5);
+}
+footer .discuss h3{
+  color:var(--text);margin:0 0 var(--s-3);font-size:var(--fs-18);font-weight:600;
+  display:flex;align-items:center;gap:var(--s-2);
+}
+footer .discuss h3::before{content:"";display:inline-block;width:6px;height:18px;background:linear-gradient(180deg, var(--green), var(--accent));border-radius:3px}
+footer .discuss .meta-line{margin-bottom:var(--s-3);color:var(--muted)}
+footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
+
+.skip-link{
+  position:fixed;top:-40px;left:var(--s-3);
+  background:var(--green);color:var(--bg);
+  padding:var(--s-2) var(--s-3);border-radius:var(--r-sm);
+  font-weight:600;z-index:100;
+  transition:top .15s ease;
+}
+.skip-link:focus{top:var(--s-3)}
+
+/* =========================================================================
+   22. RESPONSIVE
+   ========================================================================= */
+@media (max-width: 600px){
+  .hero{padding-top:var(--s-7);padding-bottom:var(--s-6)}
+  .sec{margin-block:var(--s-7)}
+  .sec h2{font-size:var(--fs-24)}
+  .cheat-row{grid-template-columns:1fr;gap:var(--s-1)}
+}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Harness Framework &middot; Developer Guide</div>
+    <h1>Integrate. Extend.<br>Operate daily.</h1>
+    <p class="sub">A hands-on guide for engineers: install the framework, wire Claude Code / Cursor / Codex, write role prompts, build safety hooks, debug the pipeline, and contribute back.</p>
+    <div class="quote">&ldquo;You don't need another lecture &mdash; you need <b>snippets, commands, and checklists</b> that get you running in 30 minutes.&rdquo;</div>
+    <div class="badges" aria-label="Supported environments">
+      <span>Python 3.10+</span><span>Node 18+</span><span>Claude Code</span><span>Cursor</span><span>Codex</span>
+      <span class="role-badge">6 roles</span><span class="role-badge">3 workflows</span><span class="role-badge">1 hook (extensible)</span>
+    </div>
+  </div>
+</header>
+
+<div class="topbar" role="navigation" aria-label="Quick navigation">
+  <div class="brand">Harness <span>Dev Guide</span></div>
+  <nav aria-label="Section links">
+    <a href="#quickstart">Quickstart</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#roles">Roles</a>
+    <a href="#prompts">Prompts</a>
+    <a href="#hooks">Hooks</a>
+    <a href="#integrations">CLI</a>
+    <a href="#memory">Memory</a>
+    <a href="#debug">Debug</a>
+  </nav>
+</div>
+
+<div class="page">
+  <aside class="toc" aria-label="Table of contents">
+    <h4>On this page</h4>
+    <ol>
+      <li><a href="#cheat">Cheat sheet</a></li>
+      <li><a href="#quickstart">Quickstart (30 min)</a></li>
+      <li><a href="#which">Which file do I edit?</a></li>
+      <li><a href="#switch">Switching CLI agents</a></li>
+      <li><a href="#workflow">Feature workflow</a></li>
+      <li><a href="#structure">Repo layout</a></li>
+      <li><a href="#roles">The six roles</a></li>
+      <li><a href="#prompts">Writing role prompts</a></li>
+      <li><a href="#hooks">Hooks &amp; safety</a></li>
+      <li><a href="#integrations">CLI integrations</a></li>
+      <li><a href="#envvars">Env vars</a></li>
+      <li><a href="#memory">Memory loop</a></li>
+      <li><a href="#debug">Debug pipeline</a></li>
+      <li><a href="#recipes">Recipes</a></li>
+      <li><a href="#contribute">Contribute</a></li>
+    </ol>
+  </aside>
+
+  <main id="main">
+
+<!-- =====================================================================
+     0. CHEAT SHEET
+     ===================================================================== -->
+<section class="sec" id="cheat">
+  <div class="sec-head"><h2><span class="num">i</span> Cheat sheet</h2></div>
+  <p class="lead">The 6 commands you'll type most often.</p>
+
+  <div class="cheat">
+    <div class="cheat-row">
+      <div class="k">Edit a role</div>
+      <div class="v"><code>harness/agents/&lt;role&gt;.md</code> &rarr; <code>python tools/gen_subagents.py</code></div>
+    </div>
+    <div class="cheat-row">
+      <div class="k">Add a gate</div>
+      <div class="v"><code>## Gate N</code> in <code>harness/workflows/*.md</code> with one <code>exit 0</code> command</div>
+    </div>
+    <div class="cheat-row">
+      <div class="k">Write an ADR</div>
+      <div class="v"><code>memory/decisions/ADR-NNN-slug.md</code> + append one line to <code>memory/MEMORY.md</code></div>
+    </div>
+    <div class="cheat-row">
+      <div class="k">Block a write</div>
+      <div class="v">append glob to <code>BLOCKED_PATTERNS</code> in <code>tools/hooks/check_write.py</code></div>
+    </div>
+    <div class="cheat-row">
+      <div class="k">Test the harness</div>
+      <div class="v"><code>python tools/lint.py</code> + run the 3 probes (see <a href="#debug">Debug</a>)</div>
+    </div>
+    <div class="cheat-row">
+      <div class="k">Debug a hook</div>
+      <div class="v"><code>echo '{...}' | python tools/hooks/check_write.py; echo $?</code> &rarr; expect 2</div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     1. QUICKSTART
+     ===================================================================== -->
+<section class="sec" id="quickstart">
+  <div class="sec-head"><h2><span class="num">1</span> Quickstart &mdash; 30 minutes</h2></div>
+  <p class="lead">Five steps. Copy &amp; run each one.</p>
+
+  <div class="callout">
+    <b>Environment:</b> Python &ge; 3.10, Git, one CLI coding agent (Claude Code recommended). No GPU, no separate API key for the harness itself.
+  </div>
+
+  <ol class="steps">
+    <li>
+      <div>
+        <b>Clone &amp; enter the repo.</b>
+        <div class="desc">
+<pre><code>git clone &lt;your-fork-or-origin&gt;/harness-framework.git
+cd harness-framework
+ls -la                    # AGENTS.md, harness/, memory/, tools/, docs/</code></pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <b>Wire your CLI.</b>
+        <div class="desc">
+          <b>Claude Code:</b>
+<pre><code>cp -r .claude.template .claude
+python tools/gen_subagents.py     # emits .claude/agents/*.md
+python tools/gen_hooks.py         # emits .claude/settings.json</code></pre>
+          <b>Cursor:</b>
+<pre><code>python tools/gen_cursor_rules.py  # emits .cursor/rules/ + .cursorrules</code></pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <b>Open a fresh session &amp; smoke test.</b>
+        <div class="desc">Ask the agent: <i>&ldquo;List the six roles defined here and the owned paths for each.&rdquo;</i> It must read <code>AGENTS.md</code> and answer correctly &mdash; not guess.</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <b>Run the mandatory safety probe.</b>
+        <div class="desc">Ask: <i>&ldquo;Reset my sqlite database file.&rdquo;</i> The <code>check_write.py</code> hook must block it (exit 2). If it doesn't, the hook isn't wired &mdash; see <a href="#hooks">Hooks</a>.</div>
+      </div>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <b>Done?</b> Everything below (writing prompts, adding roles, adding hooks) starts from here.
+  </div>
+</section>
+
+<!-- =====================================================================
+     2. WHICH FILE DO I EDIT? (decision tree)
+     ===================================================================== -->
+<section class="sec" id="which">
+  <div class="sec-head"><h2><span class="num is-purple">2</span> Which file do I edit?</h2></div>
+  <p class="lead">Two paths &mdash; one rule: edit the source, regenerate the derived.</p>
+
+  <div class="tree-decision">
+    <details open>
+      <summary>Editing prompts or workflows &mdash; <b>no rebuild</b></summary>
+      <div>
+        Files: <code>harness/agents/*.md</code>, <code>harness/workflows/*.md</code>, <code>harness/rules/*.md</code>.<br>
+        These are read by the agent at session start. Just save &mdash; the next session picks them up. <strong>No generator call needed.</strong>
+      </div>
+    </details>
+    <details open>
+      <summary>Editing hooks or memory &mdash; <b>requires action</b></summary>
+      <div>
+        <code>tools/hooks/check_write.py</code> &rarr; restart the session for the new pattern to take effect.<br>
+        <code>memory/decisions/ADR-NNN-*.md</code> &rarr; also append one line to <code>memory/MEMORY.md</code>.<br>
+        <code>harness/adapters/&lt;cli&gt;.md</code> &rarr; also re-run the corresponding <code>tools/gen_&lt;cli&gt;.py</code>.
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- =====================================================================
+     2b. SWITCHING CLI AGENTS (keep memory, swap the CLI)
+     ===================================================================== -->
+<section class="sec" id="switch">
+  <div class="sec-head"><h2><span class="num">3</span> Switching coding agent &mdash; keep the harness, swap the CLI</h2></div>
+  <p class="lead">The framework was designed CLI-portable. Roles, workflows, rules, and memory stay; only the derived config changes.</p>
+
+  <div class="split2">
+    <div class="panel ok">
+      <h3><span class="dot g"></span> What stays</h3>
+      <ul>
+        <li><code>AGENTS.md</code> &mdash; auto-read by every supported CLI.</li>
+        <li><code>harness/agents/*.md</code> &mdash; source of truth for all 6 roles.</li>
+        <li><code>harness/workflows/*.md</code>, <code>harness/rules/*.md</code> &mdash; read at session time.</li>
+        <li><code>memory/MEMORY.md</code> + <code>memory/decisions/</code> &mdash; second brain, CLI-agnostic.</li>
+        <li><code>tools/hooks/check_write.py</code> &mdash; works with any CLI that supports PreToolUse hooks.</li>
+      </ul>
+    </div>
+    <div class="panel warn">
+      <h3><span class="dot y"></span> What changes</h3>
+      <ul>
+        <li>Derived config only &mdash; <code>.claude/</code>, <code>.cursor/</code>, <code>.codex/</code>, etc.</li>
+        <li>The generator script &mdash; <code>tools/gen_&lt;cli&gt;.py</code> matched to the CLI.</li>
+        <li>The adapter file &mdash; <code>harness/adapters/&lt;cli&gt;.md</code> documenting role &rarr; config mapping.</li>
+        <li>CI regen job &mdash; extend <code>.github/workflows/harness-regen.yml</code> to call the new generator.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>The 3-step switch</h3>
+  <ol class="steps">
+    <li>
+      <div>
+        <b>Run the new generator.</b>
+        <div class="desc">From the repo root, regenerate the derived config for the target CLI. This <b>does not touch</b> <code>harness/</code> or <code>memory/</code> &mdash; it only emits a fresh <code>.claude/</code>, <code>.cursor/</code>, or equivalent.
+<pre><code># Switch to Cursor
+python tools/gen_cursor_rules.py
+
+# Switch back to Claude Code
+python tools/gen_subagents.py</code></pre>
+        </div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <b>Open the new CLI at the repo root.</b>
+        <div class="desc">Each CLI auto-reads <code>AGENTS.md</code> and its own derived folder. Memory is unchanged, so the agent picks up your last ADR and conventions immediately &mdash; no warm-up session needed.</div>
+      </div>
+    </li>
+    <li>
+      <div>
+        <b>Run the 3 probes.</b>
+        <div class="desc">After switching, verify safety, role awareness, and memory protocol (see <a href="#debug">Debug</a>). Different CLIs render hooks differently &mdash; a green probe in Claude Code does not guarantee the same in Cursor.</div>
+      </div>
+    </li>
+  </ol>
+
+  <h3>If the target CLI has no generator yet</h3>
+  <p class="prose">Copy <code>tools/gen_subagents.py</code> to <code>tools/gen_&lt;cli&gt;.py</code> and change two things:</p>
+<pre><code># 1. Output directory
+- OUT = ROOT / ".claude" / "agents"
++ OUT = ROOT / ".&lt;cli&gt;" / "agents"     # or wherever the CLI expects config
+
+# 2. Frontmatter shape (each CLI uses different keys)
+- fm += "name: " + slug + "\n"
+- fm += "description: " + meta["description"] + "\n"
+- fm += "model: " + meta["model"] + "\n"
+- fm += "tools: " + meta["tools"] + "\n"
++ fm += &lt;whatever the CLI requires&gt;</code></pre>
+  <p class="prose" style="margin-top:var(--s-3)">Then write <code>harness/adapters/&lt;cli&gt;.md</code> documenting the format (see <code>harness/adapters/claude-code.md</code> or <code>harness/adapters/cursor.md</code> for the pattern). Add the new generator to the CI regen workflow so a forgotten regenerate fails the build.</p>
+
+  <div class="callout">
+    <b>Rule of thumb:</b> if your switch takes more than 5 minutes, the prompts need work &mdash; not the generator. The harness abstracts away the CLI; the source of truth should never know which CLI is running.
+  </div>
+</section>
+
+<!-- =====================================================================
+     3. FEATURE WORKFLOW
+     ===================================================================== -->
+<section class="sec" id="workflow">
+  <div class="sec-head"><h2><span class="num">3</span> The feature workflow</h2></div>
+  <p class="lead">A request flows through roles in order, with a gate between each step. Authoring and review never share a lane. The diagram below is the canonical map; the implementation map underneath translates each node into the file, command, and gate that implements it.</p>
+
+  <div class="flow-block">
+    <div class="flow">
+      <div class="flow-head">
+        <span class="tag">workflow.feature</span>
+        <span class="sep"></span>
+        <span class="tag">lanes: 6</span>
+        <span class="sep"></span>
+        <span class="tag">gates: 3</span>
+      </div>
+      <svg class="flow-svg" viewBox="0 0 1100 400" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature workflow diagram: Manager plans, three roles build in parallel, QA verifies, DevOps ships, Manager closes.">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+          </marker>
+          <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/>
+          </marker>
+          <linearGradient id="g-qa" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--panel)"/>
+            <stop offset="100%" stop-color="var(--panel)"/>
+          </linearGradient>
+        </defs>
+
+        <g stroke="var(--border)" stroke-width="1" stroke-dasharray="2 4" opacity=".5">
+          <line x1="60"   y1="40" x2="60"   y2="360"/>
+          <line x1="280"  y1="40" x2="280"  y2="360"/>
+          <line x1="520"  y1="40" x2="520"  y2="360"/>
+          <line x1="760"  y1="40" x2="760"  y2="360"/>
+          <line x1="980"  y1="40" x2="980"  y2="360"/>
+        </g>
+
+        <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+          <rect x="60"  y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="130" y="208" fill="var(--text)" font-weight="600">Manager</text>
+          <text x="130" y="230" fill="var(--muted)" font-size="11">plan + assign</text>
+        </g>
+
+        <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+          <rect x="280" y="64"  width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="1.5"/>
+          <text x="350" y="92"  fill="var(--text)" font-weight="600">Database</text>
+          <text x="350" y="114" fill="var(--muted)" font-size="11">schema</text>
+
+          <rect x="280" y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--yellow)" stroke-width="1.5"/>
+          <text x="350" y="208" fill="var(--text)" font-weight="600">Design</text>
+          <text x="350" y="230" fill="var(--muted)" font-size="11">spec + tokens</text>
+
+          <rect x="280" y="296" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--green)" stroke-width="1.5"/>
+          <text x="350" y="324" fill="var(--text)" font-weight="600">Dev</text>
+          <text x="350" y="346" fill="var(--muted)" font-size="11">implement</text>
+        </g>
+
+        <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+          <rect x="520" y="180" width="140" height="72" rx="12" fill="url(#g-qa)" stroke="var(--teal)" stroke-width="1.5"/>
+          <text x="590" y="208" fill="var(--text)" font-weight="600">QA/QC</text>
+          <text x="590" y="230" fill="var(--muted)" font-size="11">verify + sign-off</text>
+        </g>
+
+        <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+          <rect x="760" y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--red)" stroke-width="1.5"/>
+          <text x="830" y="208" fill="var(--text)" font-weight="600">DevOps</text>
+          <text x="830" y="230" fill="var(--muted)" font-size="11">scripts + CI</text>
+        </g>
+
+        <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+          <rect x="930" y="180" width="140" height="72" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="1000" y="208" fill="var(--text)" font-weight="600">Manager</text>
+          <text x="1000" y="230" fill="var(--muted)" font-size="11">ADR + close</text>
+        </g>
+
+        <g fill="none" stroke="var(--muted)" stroke-width="1.6">
+          <path d="M200,180 L240,180 L240,100 L280,100" marker-end="url(#arrow)"/>
+          <path d="M200,216 L280,216" marker-end="url(#arrow)"/>
+          <path d="M200,252 L240,252 L240,332 L280,332" marker-end="url(#arrow)"/>
+
+          <path d="M420,100 L470,100 L470,200 L520,200" marker-end="url(#arrow)"/>
+          <path d="M420,216 L520,216" marker-end="url(#arrow)"/>
+          <path d="M420,332 L470,332 L470,232 L520,232" marker-end="url(#arrow)"/>
+
+          <path d="M660,216 L760,216" marker-end="url(#arrow)"/>
+          <path d="M900,216 L930,216" marker-end="url(#arrow)"/>
+        </g>
+
+        <g font-family="sans-serif" text-anchor="middle">
+          <rect x="540" y="138" width="120" height="22" rx="6" fill="var(--gate-bg)" stroke="var(--teal)" stroke-opacity=".5"/>
+          <text x="600" y="153" fill="var(--teal)" font-size="11" font-weight="600" letter-spacing=".04em">gate · tests pass</text>
+        </g>
+
+        <g font-family="sans-serif" text-anchor="middle">
+          <rect x="780" y="138" width="80" height="22" rx="6" fill="var(--gate-bg)" stroke="var(--red)" stroke-opacity=".4"/>
+          <text x="820" y="153" fill="var(--red)" font-size="11" font-weight="600" letter-spacing=".04em">deploy</text>
+        </g>
+      </svg>
+      <div class="flow-caption">Manager plans &rarr; Database / Design / Dev build in parallel &rarr; QA/QC verifies (different lane) &rarr; DevOps ships &rarr; Manager closes with an ADR.</div>
+    </div>
+
+    <section class="notes" aria-label="Implementation map for the feature workflow">
+      <h4>Implementation map &mdash; what each node writes to disk</h4>
+
+      <div class="pipeline-flow">
+
+        <div class="stage">
+          <div class="num">01</div>
+          <div class="name">Manager</div>
+          <div class="op">plan</div>
+          <div class="cmd">memory/decisions/ADR-NNN-*.md
+memory/MEMORY.md            # append 1 line</div>
+        </div>
+
+        <div class="group">
+          <span class="group-label">parallel &middot; runs after Manager.plan</span>
+          <div class="lanes">
+            <div class="stage">
+              <div class="num">02a</div>
+              <div class="name">Database</div>
+              <div class="op">writes</div>
+              <div class="cmd">migrations/NNN_*.sql
+models/*.py
+seeders/*.sql</div>
+            </div>
+            <div class="stage">
+              <div class="num">02b</div>
+              <div class="name">Design</div>
+              <div class="op">writes</div>
+              <div class="cmd">components/**
+styles/**
+tokens/*.json</div>
+            </div>
+            <div class="stage">
+              <div class="num">02c</div>
+              <div class="name">Dev</div>
+              <div class="op">writes</div>
+              <div class="cmd">src/**
+tests/**            # always paired</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stage">
+          <div class="num">03</div>
+          <div class="name">QA/QC</div>
+          <div class="op">verifies</div>
+          <div class="cmd">tests/qa/matrix.md    # criteria &rarr; evidence
+reports/qa-NNN.md      # sign-off</div>
+        </div>
+
+        <div class="stage">
+          <div class="num">04</div>
+          <div class="name">DevOps</div>
+          <div class="op">ships</div>
+          <div class="cmd">scripts/**
+ci/**
+deploy/**
+Dockerfile</div>
+        </div>
+
+        <div class="stage">
+          <div class="num">05</div>
+          <div class="name">Manager close</div>
+          <div class="op">closes</div>
+          <div class="cmd">memory/MEMORY.md      # append 1 line
+memory/learnings/L-NNN.md  # if post-mortem</div>
+        </div>
+
+      </div>
+
+      <div class="gates">
+        <div class="gate"><b>Gate 1 &middot; tests pass</b> <code>npm test</code> / <code>pytest</code> / <code>go test ./...</code> &rarr; exit 0</div>
+        <div class="gate"><b>Gate 2 &middot; QA sign-off</b> file <code>reports/qa-NNN.md</code> exists with verdict</div>
+        <div class="gate deploy"><b>Gate 3 &middot; deploy</b> <code>ci/deploy-staging.yml</code> green; tag emitted</div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- =====================================================================
+     4. REPO LAYOUT
+     ===================================================================== -->
+<section class="sec" id="structure">
+  <div class="sec-head"><h2><span class="num">4</span> Repo layout &mdash; read once, remember forever</h2></div>
+  <p class="lead">Each folder has exactly one job. Folders do not cross-import implicitly; the boundaries are by design.</p>
+
+  <div class="tree-wrap">
+    <div class="tree">
+<pre><span class="dir">harness-framework/</span>
+&para;-- <span class="dir">AGENTS.md</span>            <span class="cmt"># the contract every agent reads first</span>
+&para;-- <span class="dir">harness/</span>              <span class="cmt"># the orchestration layer</span>
+&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 role prompts (source of truth)</span>
+&para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore</span>
+&para;   &para;-- <span class="dir">rules/</span>            <span class="cmt"># code-style / commit / memory / safety</span>
+&para;   &para;-- <span class="dir">adapters/</span>         <span class="cmt"># claude-code.md / cursor.md</span>
+&para;-- <span class="dir">memory/</span>               <span class="cmt"># the second brain (versioned)</span>
+&para;   &para;-- <span class="dir">MEMORY.md</span>         <span class="cmt"># one-line index, loaded each session</span>
+&para;   &para;-- <span class="dir">decisions/</span>        <span class="cmt"># ADRs</span>
+&para;   &para;-- <span class="dir">conventions/</span>
+&para;   &para;-- <span class="dir">learnings/</span>
+&para;-- <span class="dir">tools/</span>                <span class="cmt"># generators + the safety hook</span>
+&para;   &para;-- gen_subagents.py
+&para;   &para;-- gen_cursor_rules.py
+&para;   &para;-- gen_hooks.py
+&para;   &para;-- <span class="dir">hooks/</span>
+&para;       &para;-- check_write.py
+&para;-- <span class="dir">.claude.template/</span>     <span class="cmt"># copy to .claude/ for Claude Code</span>
+&para;-- <span class="dir">challenge/</span>            <span class="cmt"># a practice brief</span>
+&para;-- <span class="dir">docs/</span>                 <span class="cmt"># documentation</span>
+&para;   &para;-- LEARNING_GUIDE.html
+&para;   &para;-- DEV_GUIDE.html           <span class="cmt"># you are here</span></pre>
+    </div>
+    <div class="legend">
+      <ul>
+        <li class="legend-source"><b>Source of truth</b> lives in <code>harness/</code> and <code>memory/</code>. Edit these.</li>
+        <li class="legend-derived"><b>Derived artifacts</b> (<code>.claude/agents</code>, <code>.cursor/rules</code>) are generated. Never hand-edit.</li>
+        <li class="legend-app"><b>The app</b> is whatever you build <i>under</i> this framework. The harness never imports from it.</li>
+        <li><b>Golden rule</b>: <code>tools/gen_*.py</code> is a <i>build step</i>. Commit <code>.claude/</code> only when freezing an output; otherwise <code>.gitignore</code> it.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <b>Common mistake:</b> editing files in <code>.claude/agents/</code> directly. The generator will overwrite them on the next run. Always edit <code>harness/agents/*.md</code>, then re-run the generator.
+  </div>
+</section>
+
+<!-- =====================================================================
+     5. SIX ROLES
+     ===================================================================== -->
+<section class="sec" id="roles">
+  <div class="sec-head"><h2><span class="num">5</span> The six roles &mdash; technical definition</h2></div>
+  <p class="lead">Each role is a system prompt. One agent may wear many roles in a session, but <b>at any moment only one role is active</b>, and that role can only write to its owned paths.</p>
+
+  <div class="roles">
+    <div class="role r-manager"><h4><span class="pip"></span>Manager</h4><p>Decomposes requests, assigns roles, decides scope. <b>Writes no product code.</b> Only writes to <code>docs/</code> and <code>memory/</code>.</p><div class="owns"><code>docs/</code> <code>memory/</code> <code>ADR</code></div></div>
+    <div class="role r-db"><h4><span class="pip"></span>Senior Database</h4><p>Schema, migrations, indexes, query performance. Keeper of integrity. Has authority to refuse a migration that breaks a constraint.</p><div class="owns"><code>migrations/</code> <code>models/</code> <code>seeders/</code></div></div>
+    <div class="role r-dev"><h4><span class="pip"></span>Senior Dev</h4><p>API, business logic, UI wiring. Must ship tests alongside code. May read everywhere; writes <code>src/</code> and <code>tests/</code>.</p><div class="owns"><code>src/</code> <code>tests/</code></div></div>
+    <div class="role r-design"><h4><span class="pip"></span>Senior Design</h4><p>UI/UX, design tokens, accessibility. <b>Forbidden</b> from touching DB or API contracts. Works only in <code>components/</code>, <code>styles/</code>, <code>assets/</code>.</p><div class="owns"><code>components/</code> <code>styles/</code> <code>tokens/</code></div></div>
+    <div class="role r-qa"><h4><span class="pip"></span>QA/QC</h4><p>Independent verifier. Turns acceptance criteria into a test matrix. <b>Blocks sign-off</b> until evidence exists.</p><div class="owns"><code>tests/qa/</code> <code>reports/</code> <code>bug tickets</code></div></div>
+    <div class="role r-devops"><h4><span class="pip"></span>DevOps</h4><p>Scripts, CI, env, runbook. Owns the path from code to a running system.</p><div class="owns"><code>scripts/</code> <code>ci/</code> <code>Dockerfile</code> <code>deploy/</code></div></div>
+  </div>
+
+  <div class="callout">
+    <b>The file <code>harness/agents/&lt;role&gt;.md</code></b> contains: mission, owned paths, allowed/forbidden tools, output format, input/output examples. Every role is a markdown file with YAML frontmatter &mdash; the generator parses the frontmatter to build CLI config.
+  </div>
+
+  <h3>Canonical role frontmatter</h3>
+<pre><code>---
+role: senior-dev
+display_name: "Senior Dev"
+owns:
+  - src/**
+  - tests/**
+forbidden:
+  - migrations/**
+  - .env
+  - **/*.db
+  - .claude/**
+tools:
+  allow: [Read, Edit, Write, Bash(npm test:*), Bash(pytest:*)]
+  deny:  [Bash(rm -rf:*), Bash(curl * | bash)]
+output_format: |
+  1. Plan (1-3 bullets)
+  2. Files changed (path:line)
+  3. Test evidence (command + exit code)
+  4. Risks (if any)
+---
+
+# Senior Dev
+
+You own application code: API endpoints, business logic,
+and the wiring between UI and backend.
+
+## Hard rules
+- Never edit a file under `forbidden`.
+- Every change ships a test (see `output_format`).
+- Commit messages follow Conventional Commits (see `harness/rules/commit.md`).
+
+## Soft rules
+- Prefer extending an existing utility over adding a new one.
+- Comment the "why", not the "what" (see `harness/rules/code-style.md`).
+- PR &lt; 300 lines if possible.</code></pre>
+
+  <div class="callout warn">
+    <b>Caveat:</b> <code>tools.allow</code> / <code>tools.deny</code> are <i>prompt-level</i>. To <i>actually</i> block writes, extend <code>tools/hooks/check_write.py</code> (see <a href="#hooks">Hooks</a>). Prompts guide the model; hooks have teeth.
+  </div>
+</section>
+
+<!-- =====================================================================
+     6. WRITING ROLE PROMPTS
+     ===================================================================== -->
+<section class="sec" id="prompts">
+  <div class="sec-head"><h2><span class="num">6</span> Writing role prompts that work</h2></div>
+  <p class="lead">A good prompt is one the model <i>cannot misunderstand</i>. Six hard rules, a template you can copy, and a checklist to run before merge.</p>
+
+  <div class="grid2">
+    <div class="panel ok">
+      <h3><span class="dot g"></span> Do</h3>
+      <ul>
+        <li><b>List owned/forbidden paths as globs</b> &mdash; the model parses them; humans copy them.</li>
+        <li><b>Provide one input/output example</b> &mdash; one example beats three paragraphs of explanation.</li>
+        <li><b>Specify output format</b> &mdash; force the model to answer in a schema.</li>
+        <li><b>Separate hard rules from soft rules</b> &mdash; hard = reject on violation; soft = preference.</li>
+        <li><b>Reference rule files by path</b> instead of copying content (e.g. <i>see <code>harness/rules/commit.md</code></i>).</li>
+        <li><b>Put "never" statements at the top</b> &mdash; model attention biases by position.</li>
+      </ul>
+    </div>
+    <div class="panel err">
+      <h3><span class="dot r"></span> Don't</h3>
+      <ul>
+        <li><b>Prompts longer than ~3KB</b> &mdash; model attention drops in the middle.</li>
+        <li><b>Write &ldquo;please consider&rdquo;</b> &mdash; it's filler, not instruction.</li>
+        <li><b>Use vague concepts</b> (<i>clean code</i>, <i>good design</i>) &mdash; the model invents a different definition each time.</li>
+        <li><b>Embed secrets in prompts</b> &mdash; they leak to logs and can't be rotated.</li>
+        <li><b>Ask the model to remember long context</b> &mdash; write it to an ADR and link to it.</li>
+        <li><b>Edit a prompt and forget to re-test</b> &mdash; always run the 3 probes (see <a href="#debug">Debug</a>).</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Copy-paste template for a new role</h3>
+<pre><code>---
+role: &lt;role-slug&gt;
+display_name: "&lt;Human Name&gt;"
+owns: [glob, patterns]
+forbidden: [glob, patterns]
+output_format: |
+  &lt;markdown schema&gt;
+---
+
+# &lt;Role Name&gt;
+
+## Mission
+&lt;One sentence: what you exist to do.&gt;
+
+## Hard rules (violation = reject)
+- &lt;rule 1&gt;
+- &lt;rule 2&gt;
+
+## Soft rules (preferred, not enforced)
+- &lt;rule 3&gt;
+
+## Sample input
+&lt;one example input&gt;
+
+## Sample output
+&lt;one example output matching the format&gt;
+
+## Related
+- <code>harness/rules/&lt;x&gt;.md</code>
+- <code>memory/decisions/&lt;ADR&gt;.md</code></code></pre>
+
+  <h3>Pre-merge checklist for a role prompt</h3>
+  <ul class="checks">
+    <li>Frontmatter parses with <code>python tools/lint.py</code> (no error).</li>
+    <li>Total file size &lt; 3KB; <code>owns</code> and <code>forbidden</code> paths are mutually exclusive.</li>
+    <li>Hard rules are testable (an automated check could detect a violation).</li>
+    <li>At least one input/output example is present and matches the declared format.</li>
+    <li>Re-run <code>python tools/gen_subagents.py</code>; diff is intentional.</li>
+    <li>Run the 3 probes in a fresh session &mdash; all pass.</li>
+    <li>Commit message is Conventional: <code>feat(agents): add &lt;role&gt;</code>.</li>
+  </ul>
+</section>
+
+<!-- =====================================================================
+     7. WORKFLOW FILES — see Implementation Map in section 3
+     ===================================================================== -->
+
+<!-- =====================================================================
+     7. HOOKS
+     ===================================================================== -->
+<section class="sec" id="hooks">
+  <div class="sec-head"><h2><span class="num">7</span> Hooks &amp; safety &mdash; where the harness has teeth</h2></div>
+  <p class="lead">A hook is a script that runs <i>before</i> an agent action. Unlike a prompt, it can <b>block</b>. Exit code 2 = block.</p>
+
+  <h3>The default hook: <code>tools/hooks/check_write.py</code></h3>
+<pre><code>import re, sys, json
+
+BLOCKED_PATTERNS = [
+    r"^\.env$", r".*\.env\..*$",
+    r".*\.db$", r".*\.sqlite$", r".*\.sqlite3$",
+    r"^secrets/.*", r"^\.claude/.*",
+]
+
+def main():
+    payload = json.load(sys.stdin)
+    path = payload.get("tool_input", {}).get("file_path", "")
+    for pat in BLOCKED_PATTERNS:
+        if re.match(pat, path):
+            print(f"BLOCKED by check_write.py: {path}", file=sys.stderr)
+            sys.exit(2)              # exit 2 = block
+    sys.exit(0)                      # exit 0 = allow</code></pre>
+
+  <p class="prose" style="margin-top:var(--s-3)">Extends via <code>BLOCKED_PATTERNS.append(...)</code>. To enforce <i>lane drift</i> (role cannot write outside its owned paths), see Recipe #3 below.</p>
+
+  <h3>Hook checklist</h3>
+  <ul class="checks">
+    <li><b>Idempotent</b>: no side effects; same input &rarr; same output.</li>
+    <li><b>Reads JSON from stdin</b>, never argv.</li>
+    <li><b>Exit 0 = allow</b>, <b>exit 2 = block</b>, anything else = error (also blocks).</li>
+    <li><b>Prints reason to stderr</b> so the agent understands why it was blocked.</li>
+    <li><b>Timeout &lt; 5s</b> &mdash; slow hooks &rarr; agent timeout &rarr; bad UX.</li>
+    <li><b>Test before shipping</b>: <code>echo '{"tool_input":{"file_path":".env"}}' | python tools/hooks/check_write.py; echo $?</code> must print 2.</li>
+  </ul>
+
+  <div class="callout err">
+    <b>Anti-pattern:</b> putting business logic in hooks. A hook is a <i>pattern blocker</i>, not a rule engine.
+  </div>
+</section>
+
+<!-- =====================================================================
+     8. CLI INTEGRATIONS
+     ===================================================================== -->
+<section class="sec" id="integrations">
+  <div class="sec-head"><h2><span class="num">8</span> CLI integrations &mdash; one framework, many CLIs</h2></div>
+  <p class="lead">Each CLI has its own config dialect. The generator translates <code>harness/agents/*.md</code> into whichever format the CLI expects.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="ico is-blue">{ }</div>
+      <h3>Claude Code</h3>
+      <p>Emits <code>.claude/agents/&lt;role&gt;.md</code> &mdash; each role becomes a subagent with its own system prompt. The generator parses frontmatter.</p>
+<pre><code># Run
+python tools/gen_subagents.py
+python tools/gen_hooks.py
+
+# Verify
+ls .claude/agents/
+cat .claude/settings.json | jq .hooks</code></pre>
+    </div>
+    <div class="card">
+      <div class="ico is-blue">{ }</div>
+      <h3>Cursor</h3>
+      <p>Emits <code>.cursor/rules/*.mdc</code> plus a top-level <code>.cursorrules</code>. Cursor merges rules by glob.</p>
+<pre><code># Run
+python tools/gen_cursor_rules.py
+
+# Verify
+ls .cursor/rules/
+cat .cursorrules | head -30</code></pre>
+    </div>
+    <div class="card">
+      <div class="ico is-blue">{ }</div>
+      <h3>Codex CLI</h3>
+      <p>Codex reads <code>AGENTS.md</code> natively &mdash; the file just needs to sit at the repo root. Role prompts are inlined as <code>&lt;!-- role:slug --&gt;</code> sections.</p>
+<pre><code># No generator needed; ensure:
+# 1. AGENTS.md at repo root
+# 2. memory/ folder
+# 3. Roles declared as &lt;!-- role:slug --&gt; sections</code></pre>
+    </div>
+    <div class="card">
+      <div class="ico is-blue">{ }</div>
+      <h3>OpenCode / Antigravite</h3>
+      <p>Compatible with <code>AGENTS.md</code>. No native subagent support &mdash; every role becomes a section in the merged system prompt.</p>
+<pre><code># Emit a merged file
+python tools/gen_opencode.py
+
+# Output: AGENTS.merged.md (commit at root)</code></pre>
+    </div>
+  </div>
+
+  <h3>CI: regenerate on every commit</h3>
+<pre><code># .github/workflows/harness-regen.yml
+name: regenerate-harness
+on:
+  push:
+    paths: ['harness/**', 'tools/**']
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install pyyaml
+      - run: python tools/gen_subagents.py
+      - run: python tools/gen_cursor_rules.py
+      - run: |
+          if [[ -n "$(git status --porcelain .claude/ .cursor/)" ]]; then
+            echo "::error::Derived files out of date. Run gen_*.py and commit."
+            exit 1
+          fi</code></pre>
+  <p class="prose" style="margin-top:var(--s-3)">This CI guarantees <code>harness/agents/*.md</code> and <code>.claude/</code> never drift. If you forget to run the generator, CI catches it.</p>
+</section>
+
+<!-- =====================================================================
+     9. ENV VARS REFERENCE
+     ===================================================================== -->
+<section class="sec" id="envvars">
+  <div class="sec-head"><h2><span class="num">9</span> Environment variables reference</h2></div>
+  <p class="lead">All env vars the harness reads or sets. Useful when debugging, writing hooks, or wiring CI.</p>
+
+  <div class="table-wrap">
+    <table class="enf">
+      <thead><tr><th>Variable</th><th>Set by</th><th>Read by</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>$CLAUDE_PROJECT_DIR</code></td>
+          <td>Claude Code</td>
+          <td>hooks, settings.json</td>
+          <td>Absolute path to the repo root. Use this in hook commands so they work regardless of cwd.</td>
+        </tr>
+        <tr>
+          <td><code>HARNESS_ACTIVE_ROLE</code></td>
+          <td>You (in adapter / subagent spawn)</td>
+          <td><code>check_write.py</code> (when extended for lane drift)</td>
+          <td>The role slug currently active. Lets the hook block writes outside that role's owned paths.</td>
+        </tr>
+        <tr>
+          <td><code>HARNESS_DRY_RUN</code></td>
+          <td>You (CLI flag)</td>
+          <td>generator scripts, role prompts</td>
+          <td>If set to <code>1</code>, generators print to stdout instead of writing files. Useful for CI preview.</td>
+        </tr>
+        <tr>
+          <td><code>HARNESS_LOG_FILE</code></td>
+          <td>You</td>
+          <td>hooks</td>
+          <td>Override default log path (<code>~/.harness/hook.log</code>). Set to a per-repo path when running multiple harnesses.</td>
+        </tr>
+        <tr>
+          <td><code>HARNESS_VERBOSE</code></td>
+          <td>You</td>
+          <td>role prompts, generators</td>
+          <td>If set, role prompts emit extra context (file diffs, tool calls) in their output. Use for debug sessions.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <b>Precedence:</b> CLI flag &gt; env var &gt; default in code. When in doubt, set the env var in your shell profile (e.g. <code>~/.bashrc</code>) and let the harness inherit it.
+  </div>
+</section>
+
+<!-- =====================================================================
+    10. MEMORY LOOP
+     ===================================================================== -->
+<section class="sec" id="memory">
+  <div class="sec-head"><h2><span class="num">10</span> The memory loop</h2></div>
+  <p class="lead">Memory is what turns a one-shot session into a continuous project. The diagram below is the canonical loop; the implementation map underneath shows exactly what each stage reads from and writes to disk.</p>
+
+  <div class="flow-block">
+    <div class="flow">
+      <div class="flow-head">
+        <span class="tag">workflow.memory</span>
+        <span class="sep"></span>
+        <span class="tag">stages: 4</span>
+        <span class="sep"></span>
+        <span class="tag">cycle: every session</span>
+      </div>
+      <svg class="flow-svg" viewBox="0 0 960 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Memory loop: read memory, do the work, write ADR, update index, then loop back.">
+        <defs>
+          <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse" markerUnits="strokeWidth">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+          </marker>
+        </defs>
+
+        <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="14" text-anchor="middle">
+          <rect x="20"  y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="100" y="152" fill="var(--text)" font-weight="600">read MEMORY.md</text>
+          <text x="100" y="176" fill="var(--muted)" font-size="11">+ ADRs</text>
+
+          <rect x="260" y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--green)" stroke-width="1.5"/>
+          <text x="340" y="152" fill="var(--text)" font-weight="600">do the work</text>
+          <text x="340" y="176" fill="var(--muted)" font-size="11">in role, in lane</text>
+
+          <rect x="500" y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--accent-2)" stroke-width="1.5"/>
+          <text x="580" y="152" fill="var(--text)" font-weight="600">write ADR</text>
+          <text x="580" y="176" fill="var(--muted)" font-size="11">if non-obvious</text>
+
+          <rect x="740" y="120" width="160" height="80" rx="12" fill="var(--panel)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="820" y="152" fill="var(--text)" font-weight="600">update index</text>
+          <text x="820" y="176" fill="var(--muted)" font-size="11">one line</text>
+        </g>
+
+        <g fill="none" stroke="var(--muted)" stroke-width="1.6">
+          <path d="M180,160 L260,160" marker-end="url(#ar3)"/>
+          <path d="M420,160 L500,160" marker-end="url(#ar3)"/>
+          <path d="M660,160 L740,160" marker-end="url(#ar3)"/>
+        </g>
+
+        <path d="M820,120 C 820,40 100,40 100,120"
+              fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="6 4"
+              marker-end="url(#ar3)"/>
+        <text x="460" y="36" fill="var(--teal)" font-size="12" font-family="sans-serif" text-anchor="middle" font-weight="600" letter-spacing=".04em">next session</text>
+      </svg>
+      <div class="flow-caption">Read at the start, write at the end. The loop makes the next session smarter than the last.</div>
+    </div>
+
+    <section class="notes" aria-label="Per-stage disk operations">
+      <h4>Per-stage disk operations &mdash; what each stage reads and writes</h4>
+
+      <div class="pipeline">
+        <div class="stage">
+          <div class="num">01</div>
+          <div class="name">Read</div>
+          <div class="op is-r">reads</div>
+          <div class="cmd">memory/MEMORY.md
+memory/decisions/ADR-*.md   # relevant
+memory/learnings/L-*.md     # relevant</div>
+        </div>
+
+        <div class="stage">
+          <div class="num">02</div>
+          <div class="name">Do the work</div>
+          <div class="op is-w">writes</div>
+          <div class="cmd">src/**
+tests/**
+migrations/**
+# role's owned paths</div>
+        </div>
+
+        <div class="stage">
+          <div class="num">03</div>
+          <div class="name">Write ADR</div>
+          <div class="op is-w">writes</div>
+          <div class="cmd">memory/decisions/
+  ADR-NNN-slug.md
+# Status / Context / Decision
+# Consequences / Alternatives</div>
+        </div>
+
+        <div class="stage">
+          <div class="num">04</div>
+          <div class="name">Update index</div>
+          <div class="op is-w">writes</div>
+          <div class="cmd"># append one line to:
+memory/MEMORY.md
+
+# e.g.
+# - ADR-007: drop Celery</div>
+        </div>
+      </div>
+
+      <div class="gates">
+        <div class="gate"><b>Loop closes &rarr;</b> next session reads the updated index and the new ADR before doing anything else.</div>
+      </div>
+    </section>
+  </div>
+
+  <h3><code>memory/MEMORY.md</code> &mdash; index only, never full content</h3>
+
+<pre><code># Project Memory Index
+
+## Stack
+- Backend: FastAPI (Python 3.11) + SQLAlchemy 2.0
+- DB: PostgreSQL 16 (see ADR-003)
+- Frontend: Next.js 14 + Tailwind
+
+## Key decisions
+- ADR-001: Monorepo to share types
+- ADR-002: Drop Celery, use ARQ (reasons in file)
+- ADR-003: PostgreSQL over SQLite (production needs replication)
+
+## Conventions
+- Branch: feat/&lt;role&gt;-&lt;slug&gt;
+- Commit: Conventional Commits, one role per commit
+- Test: pytest, &ge; 80% coverage for src/
+
+## Lessons learned
+- L-001: Don't use `session.add()` inside an async loop (see learnings/)
+- L-002: Hook check_write.py must use $CLAUDE_PROJECT_DIR, not absolute paths</code></pre>
+
+  <div class="callout">
+    <b>Principle:</b> <code>MEMORY.md</code> only holds <i>one-line pointers</i>. Full content lives in <code>decisions/</code>, <code>conventions/</code>, <code>learnings/</code>. The shorter the index, the easier it is to read at session start. Aim for &lt; 80 lines.
+  </div>
+
+  <h3>ADR template</h3>
+<pre><code># ADR-NNN: &lt;short title&gt;
+
+## Status
+Accepted | Proposed | Superseded by ADR-XXX
+
+## Context
+&lt;situation and problem&gt;
+
+## Decision
+&lt;what we decided&gt;
+
+## Consequences
+### Positive
+- ...
+
+### Negative
+- ...
+
+## Alternatives considered
+- &lt;option A&gt;: rejected because ...
+- &lt;option B&gt;: rejected because ...
+
+Date: YYYY-MM-DD
+Author: &lt;role&gt;</code></pre>
+
+  <h3>When to write</h3>
+  <ul class="checks">
+    <li>Picking a stack, library, or tool &mdash; anything that will be questioned again in 6 months.</li>
+    <li>Rejecting a request for technical reasons &mdash; document why before the context is gone.</li>
+    <li>Distilling a lesson from a bug &mdash; log it in <code>learnings/</code>.</li>
+  </ul>
+
+  <div class="callout warn">
+    <b>Memory rot:</b> an old ADR that contradicts current code is a <i>landmine</i>. Every quarter, run an <code>explore.md</code> task to clean: re-read <code>memory/</code>, diff against code, supersede or delete stale ADRs.
+  </div>
+</section>
+
+<!-- =====================================================================
+    11. DEBUG PIPELINE
+     ===================================================================== -->
+<section class="sec" id="debug">
+  <div class="sec-head"><h2><span class="num">11</span> Debugging the pipeline</h2></div>
+  <p class="lead">The pipeline has 5 layers. A bug in one layer shows up as a symptom in another. The table below maps symptom &rarr; root cause &rarr; fix for each layer.</p>
+
+  <div class="table-wrap">
+    <table class="enf">
+      <thead><tr><th>Layer</th><th>Symptom</th><th>Common root cause</th><th>How to debug</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>1. AGENTS.md</b></td>
+          <td>Agent reads a stale or partial AGENTS.md</td>
+          <td>CLI cache, oversized file, encoding issue</td>
+          <td><code>cat AGENTS.md</code> + reset the session</td>
+        </tr>
+        <tr>
+          <td><b>2. Role prompt</b></td>
+          <td>Wrong role chosen; owned paths ignored</td>
+          <td>YAML frontmatter broken; generator not re-run</td>
+          <td>Re-run the generator; open <code>.claude/agents/&lt;role&gt;.md</code> and check the output</td>
+        </tr>
+        <tr>
+          <td><b>3. Workflow</b></td>
+          <td>Agent skips gates; does everything in one shot</td>
+          <td>Workflow file too long; gates are vague</td>
+          <td>Split the workflow into per-gate files; require a labeled exit condition</td>
+        </tr>
+        <tr>
+          <td><b>4. Hook</b></td>
+          <td>Hook doesn't block, or blocks a legitimate write</td>
+          <td>Wrong glob pattern, wrong exit code, timeout</td>
+          <td><code>echo '...' | python tools/hooks/check_write.py; echo $?</code></td>
+        </tr>
+        <tr>
+          <td><b>5. Model</b></td>
+          <td>Agent &ldquo;doesn't get&rdquo; the prompt; output is off</td>
+          <td>Model version, context too long, prompt ambiguous</td>
+          <td>Run the prompt in a fresh, short session without memory &mdash; isolate the variable</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Three mandatory probes (run after every config change)</h3>
+
+  <div class="tests">
+    <div class="test hard">
+      <span class="tag">Probe 1 · enforced</span>
+      <h4>Safety hook</h4>
+      <p>Ask the agent to overwrite a DB file. The hook must block it.</p>
+<pre><code>prompt: "reset sqlite database"
+expect: blocked, exit 2
+
+# Manual test:
+echo '{"tool_input":{"file_path":"app.db"}}' \
+  | python tools/hooks/check_write.py
+echo $?    # must be 2</code></pre>
+    </div>
+    <div class="test soft">
+      <span class="tag">Probe 2 · advisory</span>
+      <h4>Role awareness</h4>
+      <p>Ask for a small feature. The agent must pick the right role and stay in lane.</p>
+<pre><code>prompt: "add a search endpoint"
+expect:
+  - reads AGENTS.md
+  - picks Senior Dev
+  - respects owned paths
+  - writes a test alongside</code></pre>
+    </div>
+    <div class="test soft">
+      <span class="tag">Probe 3 · advisory</span>
+      <h4>Memory protocol</h4>
+      <p>Ask why an old decision was made. The agent must cite an ADR, not guess.</p>
+<pre><code>prompt: "why PostgreSQL and not SQLite?"
+expect:
+  - reads MEMORY.md
+  - cites ADR-003
+  - does not guess</code></pre>
+    </div>
+  </div>
+
+  <h3>Verbose logging for the hook</h3>
+<pre><code># tools/hooks/check_write.py — prepend this
+import logging, os, sys
+logging.basicConfig(
+    filename=os.environ.get("HARNESS_LOG_FILE",
+        os.path.expanduser("~/.harness/hook.log")),
+    level=logging.DEBUG,
+    format="%(asctime)s %(message)s"
+)
+log = logging.getLogger("check_write")
+
+# At the end of main(), log payload + decision
+log.debug(f"role={role} path={path} decision={'BLOCK' if blocked else 'ALLOW'}")
+sys.exit(2 if blocked else 0)</code></pre>
+  <p class="prose" style="margin-top:var(--s-3)">When debugging, <code>tail -f ~/.harness/hook.log</code> to watch the agent's hook calls in real time &mdash; which paths, blocked or allowed. With logs you can guess 80% of pipeline bugs.</p>
+
+  <h3>Dry-run mode</h3>
+<pre><code># Run the whole pipeline without writing real files
+HARNESS_DRY_RUN=1 python tools/dry_run.py "add search endpoint"
+
+# Output:
+# [1/5] Manager.plan           OK
+# [2/5] SeniorDev.implement    OK (3 files)
+# [3/5] QA.verify              OK (4 tests passed)
+# [4/5] DevOps.ci              OK
+# [5/5] Manager.close          SKIPPED (dry-run)
+
+# Files written to ./dry-run/ instead of ./src/</code></pre>
+  <p class="prose" style="margin-top:var(--s-3)">Use it to preview what the agent will do before granting write access. Also useful for cost benchmarking: run 5 times, measure tokens and wall-clock.</p>
+</section>
+
+<!-- =====================================================================
+    12. RECIPES
+     ===================================================================== -->
+<section class="sec" id="recipes">
+  <div class="sec-head"><h2><span class="num is-purple">12</span> Field-tested recipes</h2></div>
+  <p class="lead">Four patterns devs reach for weekly.</p>
+
+  <div class="grid2">
+    <div class="card recipe">
+      <div class="ico">1</div>
+      <h3>Enforce lane drift in the hook</h3>
+      <p>Turn role scope from prompt-only into hard-enforced.</p>
+<pre><code># tools/hooks/check_write.py
+ROLE_PATH_MAP = {
+    "senior-dev":    {"deny": ["migrations/**"]},
+    "senior-design": {"deny": ["src/**"]},
+}
+
+def check_lane(role, path):
+    for pat in ROLE_PATH_MAP.get(role, {}).get("deny", []):
+        if fnmatch.fnmatch(path, pat):
+            return f"lane drift: {role} &rarr; {path}"
+    return None
+
+# Spawn subagent with:
+HARNESS_ACTIVE_ROLE=senior-dev claude ...</code></pre>
+    </div>
+    <div class="card recipe">
+      <div class="ico">2</div>
+      <h3>Roll back a broken prompt</h3>
+      <p>The agent is misbehaving after a prompt edit.</p>
+<pre><code>git diff harness/agents/senior-dev.md
+git checkout HEAD~1 -- harness/agents/senior-dev.md
+python tools/gen_subagents.py
+# open fresh session, re-run the 3 probes</code></pre>
+    </div>
+    <div class="card recipe">
+      <div class="ico">3</div>
+      <h3>Block a new file pattern</h3>
+      <p>The agent keeps writing to a path it shouldn't.</p>
+<pre><code># 1. Edit tools/hooks/check_write.py
+BLOCKED_PATTERNS.append(r".*\.pem$")
+
+# 2. Test
+echo '{"tool_input":{"file_path":"k.pem"}}' \
+  | python tools/hooks/check_write.py
+echo $?    # must be 2
+
+# 3. Commit
+git commit -am "feat(hooks): block .pem writes"</code></pre>
+    </div>
+    <div class="card recipe">
+      <div class="ico">4</div>
+      <h3>Unstick a stalled agent</h3>
+      <p>Three common causes &amp; fixes.</p>
+<pre><code># Waiting on approval forever
+&rarr; hook stderr unclear; improve the message
+
+# Loops indefinitely
+&rarr; workflow missing exit condition; add one
+
+# Output is empty
+&rarr; context too long; trim MEMORY.md &lt; 80 lines</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+    13. CONTRIBUTE
+     ===================================================================== -->
+<section class="sec" id="contribute">
+  <div class="sec-head"><h2><span class="num">13</span> Contributing back</h2></div>
+  <p class="lead">If you write a good role prompt, hook, or recipe &mdash; open a PR upstream. Below are the review criteria that get PRs merged quickly.</p>
+
+  <div class="split2">
+    <div class="panel ok">
+      <h3><span class="dot g"></span> A good PR</h3>
+      <ul>
+        <li><b>One change, one commit.</b> New role &ne; new recipe &ne; typo fix.</li>
+        <li><b>Includes evidence.</b> New role &rarr; output of the 3 probes. New hook &rarr; manual test command and expected output.</li>
+        <li><b>ADR for architectural changes.</b> Adding a new CLI command &rarr; an ADR explaining why.</li>
+        <li><b>Frontmatter is valid.</b> <code>python tools/lint.py</code> passes before push.</li>
+        <li><b>Commit message is Conventional.</b> <code>feat(agents): add security role</code>.</li>
+      </ul>
+    </div>
+    <div class="panel err">
+      <h3><span class="dot r"></span> Will be rejected</h3>
+      <ul>
+        <li><b>Editing <code>.claude/</code> directly</b> instead of editing <code>harness/</code> and running the generator.</li>
+        <li><b>Adding a new dependency</b> without an ADR justifying it.</li>
+        <li><b>Role prompt &gt; 3KB</b> &mdash; too long for the model to handle reliably.</li>
+        <li><b>Hook with side effects</b> (writing files, network calls) without a rate limit.</li>
+        <li><b>No evidence.</b> &ldquo;I tested it, it works&rdquo; is not evidence.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Automatic prompt linter</h3>
+<pre><code># tools/lint.py
+import yaml, sys, pathlib
+
+errors = []
+for f in pathlib.Path("harness/agents").glob("*.md"):
+    text = f.read_text()
+    parts = text.split("---", 2)
+    if len(parts) &lt; 3:
+        errors.append(f"{f}: missing frontmatter")
+        continue
+    fm = yaml.safe_load(parts[1])
+    if len(text) &gt; 3072:
+        errors.append(f"{f}: prompt &gt; 3KB ({len(text)} bytes)")
+    if "owns" not in fm or "forbidden" not in fm:
+        errors.append(f"{f}: frontmatter must have owns + forbidden")
+
+if errors:
+    for e in errors: print("ERROR:", e)
+    sys.exit(1)
+print("lint OK")</code></pre>
+  <p class="prose" style="margin-top:var(--s-3)">Run <code>python tools/lint.py</code> before every commit. Or wire it into <code>pre-commit</code>:</p>
+<pre><code># .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: harness-lint
+        name: harness prompt lint
+        entry: python tools/lint.py
+        language: python
+        pass_filenames: false</code></pre>
+</section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="discuss" id="reading">
+    <h3>Next steps &amp; further reading</h3>
+    <p class="meta-line">After reading this guide you can:</p>
+    <ul>
+      <li><b>Try the challenge</b>: open <code>challenge/</code> and complete the end-to-end exercise with the harness.</li>
+      <li><b>Write a seventh role</b>: pick a vertical (e.g. Security, SRE, Data) and add it following the template.</li>
+      <li><b>Measure your harness</b>: run the ON/OFF mini-protocol described in LEARNING_GUIDE.html and record the metrics.</li>
+      <li><b>Read LEARNING_GUIDE.html</b> if you want the deeper &ldquo;why&rdquo; behind the decisions taken here.</li>
+    </ul>
+    <p class="meta-line">Foundational reading:</p>
+    <ul>
+      <li>ReAct: Synergizing Reasoning and Acting in LLMs (Yao et al., 2022)</li>
+      <li>Reflexion: Language Agents with Verbal Reinforcement Learning (Shinn et al., 2023)</li>
+      <li>Tree of Thoughts: Deliberate Problem Solving with LLMs (Yao et al., 2023)</li>
+      <li>AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation (Wu et al., 2023)</li>
+      <li>SWE-agent: Agent-Computer Interfaces Enable Software Engineering (Yang et al., 2024)</li>
+      <li>AgentBench: Evaluating LLMs as Agents (Liu et al., 2023)</li>
+    </ul>
+  </div>
+  Harness Framework &mdash; Developer Guide.<br>
+  Bring your own code. Read AGENTS.md. Wire the CLI. Ship with discipline.
+</footer>
+
+<script>
+// Highlight current section in TOC as user scrolls.
+(function(){
+  if(!('IntersectionObserver' in window)) return;
+  const links = document.querySelectorAll('.toc a[href^="#"]');
+  const map = new Map();
+  links.forEach(a => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if(el) map.set(el, a);
+  });
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if(e.isIntersecting){
+        links.forEach(l => l.classList.remove('active'));
+        const a = map.get(e.target);
+        if(a) a.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+  map.forEach((_, el) => io.observe(el));
+})();
+</script>
+
+</body>
+</html>

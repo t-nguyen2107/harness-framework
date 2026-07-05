@@ -1,0 +1,17 @@
+# Generated agent configs (regenerate with tools/gen_*.py)
+.claude/agents/
+.cursor/rules/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / local state
+.env
+*.sqlite
+*.sqlite-journal
+.omc/
