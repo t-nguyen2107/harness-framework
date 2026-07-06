@@ -1076,7 +1076,7 @@ footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
       <div>
         <b>Clone &amp; enter the repo.</b>
         <div class="desc">
-<pre><code>git clone &lt;your-fork-or-origin&gt;/harness-framework.git
+<pre><code>git clone https://github.com/t-nguyen2107/harness-framework.git
 cd harness-framework
 ls -la                    # AGENTS.md, harness/, memory/, tools/, docs/</code></pre>
         </div>
@@ -1088,8 +1088,7 @@ ls -la                    # AGENTS.md, harness/, memory/, tools/, docs/</code></
         <div class="desc">
           <b>Claude Code:</b>
 <pre><code>cp -r .claude.template .claude
-python tools/gen_subagents.py     # emits .claude/agents/*.md
-python tools/gen_hooks.py         # emits .claude/settings.json</code></pre>
+python tools/gen_subagents.py     # emits .claude/agents/*.md (settings.json already in template)</code></pre>
           <b>Cursor:</b>
 <pre><code>python tools/gen_cursor_rules.py  # emits .cursor/rules/ + .cursorrules</code></pre>
         </div>
@@ -1453,27 +1452,28 @@ memory/learnings/L-NNN.md  # if post-mortem</div>
     <div class="tree">
 <pre><span class="dir">harness-framework/</span>
 &para;-- <span class="dir">AGENTS.md</span>            <span class="cmt"># the contract every agent reads first</span>
-&para;-- <span class="dir">harness/</span>              <span class="cmt"># the orchestration layer</span>
-&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 role prompts (source of truth)</span>
+&para;-- <span class="dir">README.md</span>            <span class="cmt"># quickstart + repo map</span>
+&para;-- <span class="dir">.gitignore</span>           <span class="cmt"># excludes .claude/, .cursor/, .omc/, secrets</span>
+&para;-- <span class="dir">harness/</span>              <span class="cmt"># the orchestration layer (source of truth)</span>
+&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 role prompts (.md)</span>
 &para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore</span>
 &para;   &para;-- <span class="dir">rules/</span>            <span class="cmt"># code-style / commit / memory / safety</span>
 &para;   &para;-- <span class="dir">adapters/</span>         <span class="cmt"># claude-code.md / cursor.md</span>
 &para;-- <span class="dir">memory/</span>               <span class="cmt"># the second brain (versioned)</span>
 &para;   &para;-- <span class="dir">MEMORY.md</span>         <span class="cmt"># one-line index, loaded each session</span>
-&para;   &para;-- <span class="dir">decisions/</span>        <span class="cmt"># ADRs</span>
+&para;   &para;-- <span class="dir">decisions/</span>        <span class="cmt"># ADRs (000-template + README)</span>
 &para;   &para;-- <span class="dir">conventions/</span>
 &para;   &para;-- <span class="dir">learnings/</span>
 &para;-- <span class="dir">tools/</span>                <span class="cmt"># generators + the safety hook</span>
-&para;   &para;-- gen_subagents.py
-&para;   &para;-- gen_cursor_rules.py
-&para;   &para;-- gen_hooks.py
+&para;   &para;-- gen_subagents.py    <span class="cmt"># role .md -&gt; .claude/agents/</span>
+&para;   &para;-- gen_cursor_rules.py <span class="cmt"># role .md -&gt; .cursor/rules/</span>
 &para;   &para;-- <span class="dir">hooks/</span>
-&para;       &para;-- check_write.py
+&para;       &para;-- check_write.py    <span class="cmt"># blocks .env, *.sqlite writes</span>
 &para;-- <span class="dir">.claude.template/</span>     <span class="cmt"># copy to .claude/ for Claude Code</span>
 &para;-- <span class="dir">challenge/</span>            <span class="cmt"># a practice brief</span>
-&para;-- <span class="dir">docs/</span>                 <span class="cmt"># documentation</span>
+&para;-- <span class="dir">docs/</span>                 <span class="cmt"># illustrated guides</span>
 &para;   &para;-- LEARNING_GUIDE.html
-&para;   &para;-- DEV_GUIDE.html           <span class="cmt"># you are here</span></pre>
+&para;   &para;-- DEV_GUIDE.html       <span class="cmt"># you are here</span></pre>
     </div>
     <div class="legend">
       <ul>
@@ -1688,7 +1688,6 @@ def main():
       <p>Emits <code>.claude/agents/&lt;role&gt;.md</code> &mdash; each role becomes a subagent with its own system prompt. The generator parses frontmatter.</p>
 <pre><code># Run
 python tools/gen_subagents.py
-python tools/gen_hooks.py
 
 # Verify
 ls .claude/agents/

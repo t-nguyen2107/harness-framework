@@ -36,7 +36,7 @@ Build a **Reading List Tracker**: a single-user app to track books you want to r
 
 1. Start a fresh agent session in this folder.
 2. Give it this brief as the request.
-3. Watch which path it takes — see `docs/GUIDE.html` → "How to use".
+3. Watch which path it takes — see `docs/LEARNING_GUIDE.html` → "How to use".
 
 ## What to look for (the actual lesson)
 
