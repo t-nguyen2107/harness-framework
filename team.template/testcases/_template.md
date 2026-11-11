@@ -6,6 +6,7 @@
 - level: <api | ui | e2e | manual>   <!-- only levels marked available in .team/config.md §5 -->
 - depends on: <TASK-… that must be done before this can be automated>
 - test file: `<path from .team/config.md §5>`
+- helper files: <none | `path` of a shared test helper qa may also edit>
 - owner: qalead
 
 ## Purpose

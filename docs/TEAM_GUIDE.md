@@ -32,7 +32,7 @@ They do not mix inside one run: pick one workflow per request.
 # 1. In your project (with the harness already dropped in):
 cp -r team.template .team
 
-# 2. Wire your CLI
+# 2. Wire your CLI (Claude Code also needs the hook: cp -r .claude.template .claude)
 python tools/gen_subagents.py       # Claude Code: .claude/agents/*.md + .claude/rules/team-coordinator.md
 python tools/gen_cursor_rules.py    # Cursor: .cursor/rules/*.mdc
 
@@ -121,6 +121,10 @@ standard one.
 
 - One working tree per team. Do not run a second team, or another session that edits code, in
   the same checkout at the same time.
-- Lane discipline for dev and qa (listed files only) is prompt-enforced plus lead's scope
-  check — not hook-enforced. `tools/hooks/check_write.py` is where to add a hard wall.
+- Write scope is hook-enforced on Claude Code (`tools/hooks/team_scope.py`, wired through
+  `.claude.template/settings.json`): each role can only write what it owns, and a dev only
+  files listed in an in-progress task. It does not see files changed through the shell, and
+  it holds parallel devs to the union of in-flight tasks — lead's scope check covers both.
+  On other CLIs the scope is prompt discipline plus review. `HARNESS_TEAM_SCOPE=off` turns
+  it off.
 - This is a protocol, not a runtime: no locks, no retries, no checkpointing beyond the files.

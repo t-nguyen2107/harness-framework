@@ -33,8 +33,10 @@ or switch branch.
    - The acceptance criteria it delivers, mapped to story AC IDs. Every story AC is covered by
      at least one task.
    - **Unit tests to write**: file, test name, which AC.
-   - **Files it may touch**: complete and exact, test files and docs included. Two tasks
-     should not share a file; if they must, chain them with `depends on`.
+   - **Files it may touch**: complete and exact, test files and docs included, one backticked
+     path per bullet (a trailing `/` allows a whole folder). Two tasks should not share a
+     file; if they must, chain them with `depends on`. Where the write hook is active, a dev
+     physically cannot write anything else.
    - **Read first**: the specific functions/sections and one existing pattern to copy.
    - `complexity: complex` for security/permissions, money, data migrations, concurrency, or
      core domain logic. Otherwise `standard`.

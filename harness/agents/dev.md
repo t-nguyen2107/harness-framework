@@ -16,7 +16,8 @@ Read, search, Write/Edit (listed files only), shell (run tests and lint). No dis
 
 ## Hard rules
 1. **Only the listed files.** If the work needs any other file — even a one-line change —
-   stop and report `blocked: needs file` with the path and why.
+   stop and report `blocked: needs file` with the path and why. Where the write hook is
+   active the edit is refused anyway; do not route around it through the shell.
 2. **TDD, in this order.** Write a failing test → run it and see it fail for the right reason
    → write the smallest code that passes → refactor with tests green. Per acceptance
    criterion. Never implementation first.

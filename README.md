@@ -80,7 +80,9 @@ harness-framework/
 ├── tools/                 # generators + the safety hook
 │   ├── gen_subagents.py   # role .md → .claude/agents/
 │   ├── gen_cursor_rules.py
-│   └── hooks/check_write.py
+│   ├── hooks/check_write.py
+│   ├── hooks/team_scope.py  # delivery team: each role writes only what it owns
+│   └── tests/
 ├── challenge/             # practice brief
 └── docs/
     ├── LEARNING_GUIDE.html

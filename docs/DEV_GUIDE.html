@@ -1012,6 +1012,7 @@ footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
       <li><a href="#workflow">Feature workflow</a></li>
       <li><a href="#structure">Repo layout</a></li>
       <li><a href="#roles">The six roles</a></li>
+      <li><a href="#team">The delivery team</a></li>
       <li><a href="#prompts">Writing role prompts</a></li>
       <li><a href="#hooks">Hooks &amp; safety</a></li>
       <li><a href="#integrations">CLI integrations</a></li>
@@ -1133,7 +1134,8 @@ python tools/gen_subagents.py     # emits .claude/agents/*.md (settings.json alr
       <div>
         <code>tools/hooks/check_write.py</code> &rarr; restart the session for the new pattern to take effect.<br>
         <code>memory/decisions/ADR-NNN-*.md</code> &rarr; also append one line to <code>memory/MEMORY.md</code>.<br>
-        <code>harness/adapters/&lt;cli&gt;.md</code> &rarr; also re-run the corresponding <code>tools/gen_&lt;cli&gt;.py</code>.
+        <code>harness/adapters/&lt;cli&gt;.md</code> &rarr; also re-run the corresponding <code>tools/gen_&lt;cli&gt;.py</code>.<br>
+        <code>harness/workflows/team.md</code> or a delivery-team role &rarr; re-run <code>python tools/gen_subagents.py</code>; Claude Code reads the generated <code>.claude/rules/team-coordinator.md</code> and <code>.claude/agents/</code>, not the source.
       </div>
     </details>
   </div>
@@ -1455,8 +1457,8 @@ memory/learnings/L-NNN.md  # if post-mortem</div>
 &para;-- <span class="dir">README.md</span>            <span class="cmt"># quickstart + repo map</span>
 &para;-- <span class="dir">.gitignore</span>           <span class="cmt"># excludes .claude/, .cursor/, .omc/, secrets</span>
 &para;-- <span class="dir">harness/</span>              <span class="cmt"># the orchestration layer (source of truth)</span>
-&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 role prompts (.md)</span>
-&para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore</span>
+&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 lane roles + 6 delivery-team roles (.md)</span>
+&para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore / team</span>
 &para;   &para;-- <span class="dir">rules/</span>            <span class="cmt"># code-style / commit / memory / safety</span>
 &para;   &para;-- <span class="dir">adapters/</span>         <span class="cmt"># claude-code.md / cursor.md</span>
 &para;-- <span class="dir">memory/</span>               <span class="cmt"># the second brain (versioned)</span>
@@ -1469,11 +1471,15 @@ memory/learnings/L-NNN.md  # if post-mortem</div>
 &para;   &para;-- gen_cursor_rules.py <span class="cmt"># role .md -&gt; .cursor/rules/</span>
 &para;   &para;-- <span class="dir">hooks/</span>
 &para;       &para;-- check_write.py    <span class="cmt"># blocks .env, *.sqlite writes</span>
+&para;       &para;-- team_scope.py     <span class="cmt"># delivery team: each role writes only what it owns</span>
+&para;   &para;-- <span class="dir">tests/</span>              <span class="cmt"># python -m unittest discover -s tools/tests</span>
 &para;-- <span class="dir">.claude.template/</span>     <span class="cmt"># copy to .claude/ for Claude Code</span>
+&para;-- <span class="dir">team.template/</span>        <span class="cmt"># copy to .team/ &mdash; board, config, story / task / TC templates</span>
 &para;-- <span class="dir">challenge/</span>            <span class="cmt"># a practice brief</span>
 &para;-- <span class="dir">docs/</span>                 <span class="cmt"># illustrated guides</span>
 &para;   &para;-- LEARNING_GUIDE.html
-&para;   &para;-- DEV_GUIDE.html       <span class="cmt"># you are here</span></pre>
+&para;   &para;-- DEV_GUIDE.html       <span class="cmt"># you are here</span>
+&para;   &para;-- TEAM_GUIDE.md        <span class="cmt"># delivery team: install, kickoff prompt</span></pre>
     </div>
     <div class="legend">
       <ul>
@@ -1555,6 +1561,57 @@ and the wiring between UI and backend.
 <!-- =====================================================================
      6. WRITING ROLE PROMPTS
      ===================================================================== -->
+<section class="sec" id="team">
+  <div class="sec-head"><h2><span class="num is-purple">+</span> The delivery team &mdash; board-driven, file-based</h2></div>
+  <p class="lead">A second set of six roles, used only by <code>harness/workflows/team.md</code>. The lane roles above split work by <i>area of the codebase</i>; these split it by <i>step of the process</i>, and keep all state in <code>.team/</code> so a run survives a new session or a different CLI. Pick one workflow per request &mdash; the two teams do not mix inside a run.</p>
+
+  <div class="roles">
+    <div class="role r-manager"><h4><span class="pip"></span>product</h4><p>Writes the story and its numbered acceptance criteria. Answers business questions. Closes the story criterion by criterion.</p><div class="owns">owns: <code>.team/stories/</code></div></div>
+    <div class="role r-db"><h4><span class="pip"></span>lead</h4><p>Splits the story into small tasks with an exact file list and the tests to write. Reviews every task: approve or rework.</p><div class="owns">owns: <code>.team/tasks/</code></div></div>
+    <div class="role r-devops"><h4><span class="pip"></span>pm</h4><p>Keeps the board true and moves work. The only role that starts other agents: devs in parallel, qa one at a time.</p><div class="owns">owns: <code>.team/board.md</code> <code>.team/decision.md</code></div></div>
+    <div class="role r-qa"><h4><span class="pip"></span>qalead</h4><p>Writes test cases from the story, not from the tasks. Reviews qa&rsquo;s automation and runs it twice.</p><div class="owns">owns: <code>.team/testcases/</code></div></div>
+    <div class="role r-dev"><h4><span class="pip"></span>dev</h4><p>Implements one task with TDD on a fast model. Needs another file? Stops and reports <code>blocked: needs file</code>.</p><div class="owns">owns: <code>the files its task lists</code></div></div>
+    <div class="role r-design"><h4><span class="pip"></span>qa</h4><p>Automates one test case. Never edits application code &mdash; a failing test with evidence is a finding, not a problem to fix.</p><div class="owns">owns: <code>the test file its TC names</code></div></div>
+  </div>
+
+  <h3>Install and start</h3>
+<pre><code>cp -r team.template .team          # board, config, templates &mdash; commit it
+python tools/gen_subagents.py      # 6 subagents + .claude/rules/team-coordinator.md
+python tools/gen_cursor_rules.py   # Cursor
+# restart the CLI, then:
+
+Team mode. Read harness/workflows/team.md and act as the coordinator.
+Story: &lt;what you want, who it is for, and why&gt;
+Constraints: &lt;out of scope / deadline / "none"&gt;
+Run the workflow until the story is done or something is blocked on me.</code></pre>
+  <p class="prose" style="margin-top:var(--s-3)"><code>.team/config.md</code> is the only project-specific file: build / lint / test commands, isolation slots for parallel devs, policies, project rules. Leave the <code>&lt;FILL IN&gt;</code> markers and the coordinator detects them on the first kickoff. Resume prompt, per-CLI notes and limits: <a href="https://github.com/t-nguyen2107/harness-framework/blob/main/docs/TEAM_GUIDE.md"><code>docs/TEAM_GUIDE.md</code></a>.</p>
+
+  <h3>Write scope &mdash; enforced by <code>tools/hooks/team_scope.py</code></h3>
+  <div class="table-wrap">
+    <table class="enf">
+      <thead><tr><th>Role</th><th>May write</th><th>Model / tools</th></tr></thead>
+      <tbody>
+        <tr><td><code>product</code></td><td><code>.team/stories/</code>; answers in <code>.team/tasks/</code>, <code>.team/testcases/</code></td><td>sonnet &middot; no shell</td></tr>
+        <tr><td><code>lead</code></td><td><code>.team/tasks/</code>, <code>.team/stories/</code>, <code>.team/testcases/</code></td><td>sonnet &middot; shell to run tests</td></tr>
+        <tr><td><code>pm</code></td><td><code>.team/board.md</code>, <code>.team/decision.md</code>, status lines in tasks and TCs</td><td>sonnet &middot; the only role with <code>Agent</code></td></tr>
+        <tr><td><code>qalead</code></td><td><code>.team/testcases/</code>, <code>.team/stories/</code></td><td>sonnet &middot; shell to run tests</td></tr>
+        <tr><td><code>dev</code></td><td><code>.team/tasks/</code> + the &ldquo;Files this task may touch&rdquo; of every <b>in-progress</b> task</td><td>haiku (sonnet for complex tasks and reworks)</td></tr>
+        <tr><td><code>qa</code></td><td><code>.team/testcases/</code> + the <code>test file</code> / <code>helper files</code> of every <b>in-progress</b> TC</td><td>haiku</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="prose" style="margin-top:var(--s-3)">Claude Code passes <code>agent_id</code> and <code>agent_type</code> to <code>PreToolUse</code> hooks when the call comes from a sub-agent. <code>check_write.py</code> hands those to <code>team_scope.check()</code>, which reads the task and TC files to build the allow-list. The main session (the coordinator, or any ordinary session) is never scoped, and neither is a project without a <code>.team/</code> folder.</p>
+<pre><code># A dev writing outside every in-progress task &rarr; exit 2
+echo '{"agent_id":"a1","agent_type":"dev","tool_input":{"file_path":"src/other.py"}}' \
+  | CLAUDE_PROJECT_DIR="$PWD" python tools/hooks/check_write.py; echo $?
+
+python -m unittest discover -s tools/tests    # the scope rules, as tests</code></pre>
+
+  <div class="callout warn">
+    <b>What the wall does not cover:</b> (1) files changed through the shell (<code>sed -i</code>, redirects) &mdash; the hook only sees Write / Edit calls, so lead&rsquo;s <code>git status</code> scope check stays; (2) <i>which</i> dev holds which task &mdash; parallel devs are held to the union of all in-flight tasks; (3) other CLIs &mdash; only Claude Code sends the agent type, elsewhere the scope is prompt discipline plus review. <code>HARNESS_TEAM_SCOPE=off</code> disables this check and nothing else.
+  </div>
+</section>
+
 <section class="sec" id="prompts">
   <div class="sec-head"><h2><span class="num">6</span> Writing role prompts that work</h2></div>
   <p class="lead">A good prompt is one the model <i>cannot misunderstand</i>. Six hard rules, a template you can copy, and a checklist to run before merge.</p>
@@ -1658,6 +1715,9 @@ def main():
     sys.exit(0)                      # exit 0 = allow</code></pre>
 
   <p class="prose" style="margin-top:var(--s-3)">Extends via <code>BLOCKED_PATTERNS.append(...)</code>. To enforce <i>lane drift</i> (role cannot write outside its owned paths), see Recipe #3 below.</p>
+
+  <h3>Delivery-team scope: <code>tools/hooks/team_scope.py</code></h3>
+  <p class="prose">The same hook also enforces per-role write scope for the delivery team: a <code>dev</code> sub-agent can only write files listed in an in-progress task, a <code>qa</code> only its test file, and the planning roles only their <code>.team/</code> files. Rules, a manual test and the limits are in <a href="#team">The delivery team</a>.</p>
 
   <h3>Hook checklist</h3>
   <ul class="checks">
@@ -1771,6 +1831,12 @@ jobs:
           <td>You (in adapter / subagent spawn)</td>
           <td><code>check_write.py</code> (when extended for lane drift)</td>
           <td>The role slug currently active. Lets the hook block writes outside that role's owned paths.</td>
+        </tr>
+        <tr>
+          <td><code>HARNESS_TEAM_SCOPE</code></td>
+          <td>You</td>
+          <td><code>check_write.py</code></td>
+          <td>Set to <code>off</code> to disable the delivery-team write scope (<code>team_scope.py</code>). The <code>.env</code> / database denylist stays on.</td>
         </tr>
         <tr>
           <td><code>HARNESS_DRY_RUN</code></td>
@@ -2095,7 +2161,7 @@ HARNESS_DRY_RUN=1 python tools/dry_run.py "add search endpoint"
     <div class="card recipe">
       <div class="ico">1</div>
       <h3>Enforce lane drift in the hook</h3>
-      <p>Turn role scope from prompt-only into hard-enforced.</p>
+      <p>Turn role scope from prompt-only into hard-enforced. The delivery team already ships this in <code>tools/hooks/team_scope.py</code> &mdash; use it as the working example; the sketch below is for the lane roles.</p>
 <pre><code># tools/hooks/check_write.py
 ROLE_PATH_MAP = {
     "senior-dev":    {"deny": ["migrations/**"]},

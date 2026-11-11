@@ -40,7 +40,8 @@ commands in `.team/config.md`. Never commit, push, stash, reset or switch branch
    numbered steps with expected results, and the negative cases that matter: a user without
    access, another tenant's data, empty data, invalid input.
 5. Set `depends on` to the tasks that must be `done` first, and `test file` to a path that
-   follows the config.
+   follows the config. Put paths in backticks — where the write hook is active, qa can only
+   write the paths on the `test file` and `helper files` lines.
 6. Keep each TC small enough for one qa run in a 100k context: one flow, about 8 steps.
 
 ## Job 2 — review a TC in `review`

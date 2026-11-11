@@ -60,6 +60,12 @@ Restrict the `tools` field per role to enforce lane discipline at the API level.
 ## Hooks (hard enforcement)
 Add a `PreToolUse` hook in `.claude/settings.json` to block forbidden writes. The framework ships a starter hook at `tools/hooks/check_write.py` that blocks `.env` and database files.
 
+The same hook enforces the delivery team's write scope (`tools/hooks/team_scope.py`): Claude
+Code passes `agent_id` / `agent_type` to the hook for sub-agent calls, so a `dev` can only
+write files listed in an in-progress task, a `qa` only its test file, and the planning roles
+only their `.team/` files. It covers Write / Edit, not shell commands. Disable with
+`HARNESS_TEAM_SCOPE=off`.
+
 > Always reference the hook script with `${CLAUDE_PROJECT_DIR}/...` so the path resolves regardless of the agent's current directory.
 
 ## Generation

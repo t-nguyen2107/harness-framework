@@ -7,8 +7,12 @@ Forbidden (safety rule + DB integrity):
   - .env files (secrets)        except .env.example
   - *.sqlite / *.sqlite-*       the live database
 
-This is the first tooth of the harness. Extend the denylist or add
-per-role path enforcement here.
+Delivery-team scope (harness/workflows/team.md): when the call comes from a
+sub-agent whose type is a team role (product, lead, pm, qalead, dev, qa), the
+write must also be inside what that role owns — see team_scope.py. Set
+HARNESS_TEAM_SCOPE=off to disable that check only.
+
+This is the first tooth of the harness. Extend the denylist here.
 
 Wire it in .claude/settings.json with matcher Write|Edit|NotebookEdit and
 command:  python "${CLAUDE_PROJECT_DIR}/tools/hooks/check_write.py"
@@ -17,8 +21,11 @@ command:  python "${CLAUDE_PROJECT_DIR}/tools/hooks/check_write.py"
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
+
+import team_scope
 
 
 def _forbidden(path_str):
@@ -44,6 +51,14 @@ def main() -> int:
     if reason:
         print(reason, file=sys.stderr)
         return 2
+    # agent_id is present only inside a sub-agent; the main session (the
+    # coordinator, or any ordinary session) is never team-scoped.
+    if data.get("agent_id") and os.environ.get("HARNESS_TEAM_SCOPE", "").lower() != "off":
+        project_dir = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
+        reason = team_scope.check(data.get("agent_type"), file_path, project_dir)
+        if reason:
+            print(reason, file=sys.stderr)
+            return 2
     return 0
 
 
