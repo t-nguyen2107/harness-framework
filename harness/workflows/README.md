@@ -7,3 +7,4 @@ Multi-role orchestration flows. Each has a **trigger**, ordered **steps** (role 
 | `feature.md` | Ship a feature end-to-end |
 | `bugfix.md` | Fix a reported bug |
 | `explore.md` | Read-only recon before a big change |
+| `team.md` | A story too big for one context: board-driven delivery team, parallel devs, state in `.team/` |

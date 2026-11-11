@@ -658,6 +658,7 @@ footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
       <li><a href="#ideas">Three ideas, one loop</a></li>
       <li><a href="#roles">The six roles</a></li>
       <li><a href="#workflow">The feature workflow</a></li>
+      <li><a href="#team">The delivery team</a></li>
       <li><a href="#tree">Codebase identity</a></li>
       <li><a href="#howto">How to use it</a></li>
       <li><a href="#wins">Wins &amp; trade-offs</a></li>
@@ -884,6 +885,28 @@ footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
   </div>
 </section>
 
+<section class="sec" id="team">
+  <div class="sec-head"><h2><span class="num is-purple">+</span> The delivery team</h2></div>
+  <p class="lead">A second team, split by <i>step of the process</i> instead of area of the codebase. Use it when a story is too big for one context: the work is cut into small tasks, cheap models do the bulk in parallel, and every piece is reviewed by a role that did not write it. Its state lives in files under <code>.team/</code>, so a run can be resumed by another session &mdash; or another CLI.</p>
+  <div class="roles">
+    <div class="role r-manager"><h4><span class="pip"></span>product</h4><p>Writes the story and its numbered acceptance criteria. Answers business questions. Closes the story criterion by criterion.</p><div class="owns">owns: <code>.team/stories/</code></div></div>
+    <div class="role r-db"><h4><span class="pip"></span>lead</h4><p>Splits the story into small tasks with an exact file list and the tests to write. Reviews every task: approve or rework.</p><div class="owns">owns: <code>.team/tasks/</code></div></div>
+    <div class="role r-devops"><h4><span class="pip"></span>pm</h4><p>Keeps the board true and moves work. The only role that starts other agents: devs in parallel, qa one at a time.</p><div class="owns">owns: <code>.team/board.md</code> <code>.team/decision.md</code></div></div>
+    <div class="role r-qa"><h4><span class="pip"></span>qalead</h4><p>Writes test cases from the story, not from the tasks. Reviews qa&rsquo;s automation and runs it twice.</p><div class="owns">owns: <code>.team/testcases/</code></div></div>
+    <div class="role r-dev"><h4><span class="pip"></span>dev</h4><p>Implements one task with TDD on a fast model. Needs another file? Stops and reports <code>blocked: needs file</code>.</p><div class="owns">owns: <code>the files its task lists</code></div></div>
+    <div class="role r-design"><h4><span class="pip"></span>qa</h4><p>Automates one test case. Never edits application code &mdash; a failing test with evidence is a finding, not a problem to fix.</p><div class="owns">owns: <code>the test file its TC names</code></div></div>
+  </div>
+  <ol class="steps" style="margin-top:var(--s-4)">
+    <li><div><b>Story.</b><div class="desc">product writes acceptance criteria. <strong>You approve them</strong> before anything is built &mdash; the cheapest place to catch a wrong story.</div></div></li>
+    <li><div><b>Breakdown.</b><div class="desc">lead writes tasks (frontend or backend, exact file list, tests to write, sized for a 100k context). qalead writes test cases from the same story.</div></div></li>
+    <li><div><b>Dispatch round.</b><div class="desc">pm picks up to 4 ready tasks whose file lists do not overlap and starts one dev per task, in parallel.</div></div></li>
+    <li><div><b>Review.</b><div class="desc">lead checks each task: every criterion has a test, tests pass, the code stays inside the task. A second rework stops the task and escalates to you.</div></div></li>
+    <li><div><b>QA.</b><div class="desc">One test case at a time: qa automates, qalead reviews. An application bug becomes a new task; qa never patches the app.</div></div></li>
+    <li><div><b>Closure.</b><div class="desc">lead runs the full gate, product maps each criterion to its proof, and you get a report that also lists what was <i>not</i> verified.</div></div></li>
+  </ol>
+  <p class="lead" style="margin-top:var(--s-4)">Three rules carry the whole thing: <b>files are the only memory</b> (agents remember nothing between runs), <b>one writer per file</b>, and <b>a question stops the work</b> &mdash; it is written into the file, answered there, and logged if it changes a decision. Start it with &ldquo;Team mode. Read <code>harness/workflows/team.md</code> and act as the coordinator.&rdquo; Full guide: <a href="https://github.com/t-nguyen2107/harness-framework/blob/main/docs/TEAM_GUIDE.md"><code>docs/TEAM_GUIDE.md</code></a>.</p>
+</section>
+
 <section class="sec" id="tree">
   <div class="sec-head"><h2><span class="num">4</span> Codebase identity</h2></div>
   <p class="lead">The layout is intentional. Folders do not cross-import; each one has a single job.</p>
@@ -894,8 +917,8 @@ footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
 &para;-- <span class="dir">README.md</span>            <span class="cmt"># quickstart + repo map</span>
 &para;-- <span class="dir">.gitignore</span>           <span class="cmt"># excludes .claude/, .cursor/, .omc/, secrets</span>
 &para;-- <span class="dir">harness/</span>              <span class="cmt"># the orchestration layer (source of truth)</span>
-&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 role prompts (.md)</span>
-&para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore</span>
+&para;   &para;-- <span class="dir">agents/</span>           <span class="cmt"># 6 lane roles + 6 delivery-team roles (.md)</span>
+&para;   &para;-- <span class="dir">workflows/</span>        <span class="cmt"># feature / bugfix / explore / team</span>
 &para;   &para;-- <span class="dir">rules/</span>            <span class="cmt"># code-style / commit / memory / safety</span>
 &para;   &para;-- <span class="dir">adapters/</span>         <span class="cmt"># claude-code.md / cursor.md</span>
 &para;-- <span class="dir">memory/</span>               <span class="cmt"># the second brain (versioned)</span>
@@ -907,11 +930,14 @@ footer .discuss .meta-line:not(:first-child){margin-top:var(--s-5)}
 &para;   &para;-- gen_subagents.py    <span class="cmt"># role .md -&gt; .claude/agents/</span>
 &para;   &para;-- gen_cursor_rules.py <span class="cmt"># role .md -&gt; .cursor/rules/</span>
 &para;   &para;-- <span class="dir">hooks/check_write.py</span>  <span class="cmt"># blocks .env, *.sqlite writes</span>
+&para;   &para;-- <span class="dir">hooks/team_scope.py</span>   <span class="cmt"># delivery team: each role writes only what it owns</span>
 &para;-- <span class="dir">.claude.template/</span>     <span class="cmt"># copy to .claude/ for Claude Code</span>
+&para;-- <span class="dir">team.template/</span>        <span class="cmt"># copy to .team/ &mdash; board, config, story / task / TC templates</span>
 &para;-- <span class="dir">challenge/</span>            <span class="cmt"># a practice brief</span>
 &para;-- <span class="dir">docs/</span>                 <span class="cmt"># illustrated guides (this file)</span>
 &para;   &para;-- LEARNING_GUIDE.html  <span class="cmt"># you are here</span>
-&para;   &para;-- DEV_GUIDE.html       <span class="cmt"># developer-facing reference</span></pre>
+&para;   &para;-- DEV_GUIDE.html       <span class="cmt"># developer-facing reference</span>
+&para;   &para;-- TEAM_GUIDE.md        <span class="cmt"># delivery team: install, kickoff prompt</span></pre>
     </div>
     <div class="legend">
       <ul>
@@ -999,6 +1025,7 @@ expect: reads MEMORY.md, answers from an ADR</code></pre>
     <thead><tr><th>Mechanism</th><th class="col-narrow">Type</th><th>Notes</th></tr></thead>
     <tbody>
       <tr><td>Safety hook (block <code>.env</code>, database files)</td><td><span class="pill hard">Enforced</span></td><td>Machine-checked via <code>tools/hooks/check_write.py</code>.</td></tr>
+      <tr><td>Delivery-team write scope (a dev writes only files listed in an in-progress task)</td><td><span class="pill hard">Enforced</span></td><td>Machine-checked via <code>tools/hooks/team_scope.py</code> on Claude Code. Covers file edits, not shell commands; lead&rsquo;s review covers the rest.</td></tr>
       <tr><td>Read <code>AGENTS.md</code> at session start</td><td><span class="pill soft">Advised</span></td><td>CLIs auto-read it; following it is prompt discipline.</td></tr>
       <tr><td>Role path-scope (Dev stays out of migrations)</td><td><span class="pill soft">Advised</span></td><td>Reinforced by prompt + safety rule. Extend the hook to harden.</td></tr>
       <tr><td>Workflow stages (Manager &rarr; Dev &rarr; QA)</td><td><span class="pill soft">Advised</span></td><td>Driven by the prompt and the workflow file.</td></tr>

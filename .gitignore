@@ -1,5 +1,6 @@
 # Generated agent configs (regenerate with tools/gen_*.py)
 .claude/agents/
+.claude/rules/team-coordinator.md
 .cursor/rules/
 
 # Dev artifacts
