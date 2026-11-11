@@ -21,6 +21,11 @@ Suggested globs (adapt to your layout):
 | senior-design | `<frontend>/**` |
 | qa-qc | `**/tests/**, **/*.test.*` |
 | devops | `scripts/**, .github/**, Dockerfile, .env.example` |
+| product | `.team/stories/**` |
+| lead | `.team/tasks/**` |
+| pm | `.team/board.md, .team/decision.md` |
+| qalead | `.team/testcases/**` |
+| dev, qa | none — the task / TC file names their paths; invoke by role name |
 
 ## Tool allowance
 Cursor does not restrict tools per rule; lane discipline is advisory (prompt + safety rule), same as Claude Code today.

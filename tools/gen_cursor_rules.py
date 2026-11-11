@@ -24,6 +24,14 @@ ROLES = {
     "senior-design":   {"globs": "src/**, app/**, web/**"},
     "qa-qc":          {"globs": "**/tests/**, **/*.test.*"},
     "devops":          {"globs": "scripts/**, .github/**, Dockerfile, .env.example"},
+    # Delivery team (harness/workflows/team.md). dev and qa have no fixed
+    # paths (the task / TC file names them), so they are description-matched.
+    "product": {"globs": ".team/stories/**"},
+    "lead":    {"globs": ".team/tasks/**"},
+    "pm":      {"globs": ".team/board.md, .team/decision.md"},
+    "qalead":  {"globs": ".team/testcases/**"},
+    "dev":     {"globs": ""},
+    "qa":      {"globs": ""},
 }
 
 

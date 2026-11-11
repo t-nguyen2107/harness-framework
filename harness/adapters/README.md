@@ -14,5 +14,5 @@ Adapters translate the harness's roles + workflows into each agent CLI's native 
 
 | File | CLI | Generator |
 |------|-----|-----------|
-| `claude-code.md` | Claude Code | `tools/gen_subagents.py` → `.claude/agents/*.md` |
+| `claude-code.md` | Claude Code | `tools/gen_subagents.py` → `.claude/agents/*.md` + `.claude/rules/team-coordinator.md` |
 | `cursor.md` | Cursor | `tools/gen_cursor_rules.py` → `.cursor/rules/*.mdc` |

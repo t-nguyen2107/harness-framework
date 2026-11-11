@@ -29,6 +29,22 @@ Adopt exactly one role per task. Each role owns specific paths and cannot touch 
 
 > Authoring ≠ review. Whoever writes cannot sign off. QA/QC or another lane confirms.
 
+### Delivery team (only in team mode)
+
+A second, process-based team used by `harness/workflows/team.md`. Its state lives in `.team/`.
+
+| Role | Prompt | Owns | Cannot touch |
+|------|--------|------|--------------|
+| product | `harness/agents/product.md` | `.team/stories/` | code, tasks, board |
+| lead | `harness/agents/lead.md` | `.team/tasks/`; reviews dev | code, board |
+| pm | `harness/agents/pm.md` | `.team/board.md`, `.team/decision.md`; starts dev + qa | code, stories, tasks |
+| qalead | `harness/agents/qalead.md` | `.team/testcases/`; reviews qa | code, board |
+| dev | `harness/agents/dev.md` | only the files its task lists | everything else |
+| qa | `harness/agents/qa.md` | only the test file its TC names | application code |
+
+Adopt one of these only when the user starts team mode or hands you the role
+("You are dev. Your task file is …").
+
 ## 3. Memory protocol
 
 - **Read first**: `memory/MEMORY.md` + relevant ADRs.
@@ -51,6 +67,7 @@ See `harness/rules/`. Condensed:
 - `feature.md` — ship a feature end-to-end.
 - `bugfix.md` — reproduce → fix → verify → close.
 - `explore.md` — read-only recon before a big change.
+- `team.md` — board-driven delivery with the delivery team; only when the user says "Team mode".
 
 Pick the matching workflow; do not freelance.
 

@@ -22,6 +22,7 @@ Both guides are standalone HTML — open them in any browser, no build step.
 
 - **6 role prompts** (Manager, Senior DB, Senior Dev, Senior Design, QA/QC, DevOps) with strict owned-paths discipline.
 - **3 workflows** (feature, bugfix, explore) that gate every step.
+- **A delivery team** (product, lead, pm, qalead, dev, qa) with a file-based board in `.team/`: small tasks, up to 4 parallel devs on cheap models, independent review, resumable from any CLI. See the [Team guide](./docs/TEAM_GUIDE.md).
 - **A safety hook** that blocks writes to `.env`, `*.db`, secrets — exit 2, machine-enforced, not prompt-soft.
 - **Versioned memory**: `memory/MEMORY.md` index + `decisions/`, `conventions/`, `learnings/` — read at session start, written at session end.
 - **CLI-portable**: same prompts drive Claude Code, Cursor, Codex, OpenCode. Swap CLIs without losing memory.
@@ -49,6 +50,9 @@ python tools/gen_subagents.py
 # Cursor
 python tools/gen_cursor_rules.py
 
+# Optional: the delivery team (board-driven, parallel devs)
+cp -r team.template .team        # then see docs/TEAM_GUIDE.md
+
 # 4. Open a fresh session, ask the agent:
 #    "List the six roles defined here and their owned paths."
 
@@ -65,13 +69,14 @@ python tools/gen_cursor_rules.py
 harness-framework/
 ├── AGENTS.md              # contract every agent reads first
 ├── harness/               # orchestration layer (source of truth)
-│   ├── agents/            # 6 role prompts (.md)
-│   ├── workflows/         # feature / bugfix / explore
+│   ├── agents/            # 6 lane roles + 6 delivery-team roles (.md)
+│   ├── workflows/         # feature / bugfix / explore / team
 │   ├── rules/             # code-style / commit / memory / safety
 │   └── adapters/          # per-CLI mapping (claude-code / cursor)
 ├── memory/                # second brain (versioned)
 │   ├── MEMORY.md          # one-line index, loaded each session
 │   └── decisions/         # ADRs
+├── team.template/         # copy to .team/ — board, config, story/task/TC templates
 ├── tools/                 # generators + the safety hook
 │   ├── gen_subagents.py   # role .md → .claude/agents/
 │   ├── gen_cursor_rules.py
@@ -79,7 +84,8 @@ harness-framework/
 ├── challenge/             # practice brief
 └── docs/
     ├── LEARNING_GUIDE.html
-    └── DEV_GUIDE.html
+    ├── DEV_GUIDE.html
+    └── TEAM_GUIDE.md      # delivery team: install, kickoff prompt, per-CLI notes
 ```
 
 **Read order for every session:** `AGENTS.md` → `memory/MEMORY.md` → relevant ADRs → your role prompt.
